@@ -37,7 +37,7 @@ export default function Footer() {
                 </div>
 
                 <div className="mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center text-sm text-gray-600">
-                    <p>© 2026 Bears Week Sitges. Todos los derechos reservados.</p>
+                    <p>© 2026 <span className="text-gradient">Bears Sitges Week</span>. Todos los derechos reservados.</p>
                     <div className="flex items-center gap-6 mt-4 md:mt-0">
                         <a href="#" className="text-gray-500 hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-accent-primary hover:via-accent-secondary hover:to-accent-tertiary transition-colors" aria-label="Instagram">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none">

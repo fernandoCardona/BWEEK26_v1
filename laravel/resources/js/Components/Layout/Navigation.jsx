@@ -40,8 +40,8 @@ export default function Navigation() {
         <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-black/80 backdrop-blur-lg border-b border-white/10 py-4' : 'bg-transparent py-6'}`}>
             <div className="container mx-auto px-6 flex items-center justify-between">
                 <Link href="/" className="group flex items-center space-x-2">
-                    <span className="text-2xl font-bold tracking-tighter transition-colors">
-                        BEARS <span className="text-gradient">SITGES WEEK</span>
+                    <span className="text-2xl font-bold tracking-tighter text-gradient">
+                        BEARS SITGES WEEK
                     </span>
                 </Link>
 
@@ -177,24 +177,24 @@ export default function Navigation() {
                     </div>
 
                     {props.auth?.user ? (
-                        <div className="flex items-center gap-3">
-                            <Link href={route('cart.index')} className="glass-card p-2 rounded-xl hover:bg-white/10 transition-colors" aria-label="Carrito">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-white">
+                        <div className="flex items-center gap-4">
+                            <Link href={route('cart.index')} className="icon-btn" aria-label="Carrito">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                                     <path d="M6 6h15l-1.5 9h-11L6 6z" stroke="currentColor" strokeWidth="1.5" />
-                                    <circle cx="9" cy="20" r="1.5" fill="currentColor" />
-                                    <circle cx="18" cy="20" r="1.5" fill="currentColor" />
+                                    <circle cx="9" cy="20" r="1.3" fill="currentColor" />
+                                    <circle cx="18" cy="20" r="1.3" fill="currentColor" />
                                 </svg>
                             </Link>
-                            <div className="glass-card w-8 h-8 rounded-xl flex items-center justify-center">
-                                <div className="w-7 h-7 rounded-full bg-white/10 border border-white/10 flex items-center justify-center text-xs font-bold">
+                            <div className="icon-btn">
+                                <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold">
                                     {props.auth.user.name?.[0]?.toUpperCase() || 'U'}
                                 </div>
                             </div>
-                            <Link href={route('logout')} method="post" as="button" className="glass-card p-2 rounded-xl hover:bg-white/10 transition-colors" aria-label="Logout">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-white">
-                                    <circle cx="12" cy="12" r="10" fill="currentColor" className="text-red-600"></circle>
-                                    <path d="M13 8l4 4-4 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                    <path d="M7 12h10" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/>
+                            <Link href={route('logout')} method="post" as="button" className="icon-btn" aria-label="Logout">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                    <path d="M15 12H5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                                    <path d="M11 8l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                                    <path d="M19 4v16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
                                 </svg>
                             </Link>
                         </div>

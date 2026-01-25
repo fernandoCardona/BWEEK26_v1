@@ -58,4 +58,11 @@
     .text-gradient {
         @apply text-transparent bg-clip-text bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-tertiary;
     }
+
+    .icon-btn {
+        @apply inline-flex items-center justify-center text-gray-400 transition-all duration-300;
+    }
+    .icon-btn:hover {
+        @apply text-accent-primary scale-110;
+    }
 }
