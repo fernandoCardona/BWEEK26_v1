@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, usePage } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { FiLogOut, FiShoppingCart, FiUser } from 'react-icons/fi';
+import { FiLogOut, FiShoppingCart, FiUser, FiX } from 'react-icons/fi';
 
 export default function Navigation() {
     const { url, props } = usePage();
     const [scrolled, setScrolled] = useState(false);
     const [loginOpen, setLoginOpen] = useState(false);
+    const [authMode, setAuthMode] = useState('login');
     const [mobileOpen, setMobileOpen] = useState(false);
     const [openKey, setOpenKey] = useState(null);
     const closeTimer = useRef(null);
@@ -37,6 +38,54 @@ export default function Navigation() {
             }
         });
     }, []);
+
+    const loginForm = useForm({
+        email: '',
+        password: '',
+        remember: false,
+    });
+
+    const registerForm = useForm({
+        name: '',
+        email: '',
+        password: '',
+        password_confirmation: '',
+    });
+
+    const closeAuthModal = () => {
+        setLoginOpen(false);
+        setAuthMode('login');
+        loginForm.reset('password');
+        registerForm.reset('password', 'password_confirmation');
+        loginForm.clearErrors();
+        registerForm.clearErrors();
+    };
+
+    const openLoginModal = () => {
+        setAuthMode('login');
+        setLoginOpen(true);
+    };
+
+    const openRegisterModal = () => {
+        setAuthMode('register');
+        setLoginOpen(true);
+    };
+
+    const submitLogin = (e) => {
+        e.preventDefault();
+        loginForm.post(route('login'), {
+            onSuccess: () => closeAuthModal(),
+            onFinish: () => loginForm.reset('password'),
+        });
+    };
+
+    const submitRegister = (e) => {
+        e.preventDefault();
+        registerForm.post(route('register'), {
+            onSuccess: () => closeAuthModal(),
+            onFinish: () => registerForm.reset('password', 'password_confirmation'),
+        });
+    };
 
     return (
         <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-black/80 backdrop-blur-lg border-b border-white/10 py-4' : 'bg-transparent py-6'}`}>
@@ -205,7 +254,7 @@ export default function Navigation() {
                                 onClick={() => {
                                     setMobileOpen(false);
                                     setOpenKey(null);
-                                    setLoginOpen(true);
+                                    openLoginModal();
                                 }}
                                 className="btn-primary py-2 px-5 text-sm"
                             >
@@ -269,7 +318,7 @@ export default function Navigation() {
                                 onClick={() => {
                                     setMobileOpen(false);
                                     setOpenKey(null);
-                                    setLoginOpen(true);
+                                    openLoginModal();
                                 }}
                                 className="btn-primary w-full py-3"
                             >
@@ -282,31 +331,138 @@ export default function Navigation() {
 
             {/* Login Modal */}
             {loginOpen && (
-                <div className="fixed inset-0 z-[100] flex min-h-screen items-center justify-center bg-black/60 backdrop-blur-sm p-6">
-                    <div className="glass-card p-8 w-full max-w-md border border-white/10">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-2xl font-black tracking-tight">Acceder</h2>
-                            <button onClick={() => setLoginOpen(false)} className="text-gray-400 hover:text-white">✕</button>
-                        </div>
-                        <div className="space-y-4">
-                            <input type="email" placeholder="Email" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3" />
-                            <input type="password" placeholder="Password" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3" />
-                            <div className="flex items-center justify-between">
-                                <label className="flex items-center gap-2 text-sm text-gray-400 select-none">
-                                    <input type="checkbox" className="rounded border-white/20 bg-white/5" />
-                                    Recordarme
-                                </label>
-                                <div className="text-xs text-gray-500">
-                                    <Link href="/privacy-policy" className="link-hover-gradient">Privacidad</Link>
-                                    <span className="mx-2">•</span>
-                                    <Link href="/cookies-policy" className="link-hover-gradient">Cookies</Link>
+                <div
+                    className="fixed inset-0 z-[100] flex min-h-screen items-center justify-center bg-black/70 backdrop-blur-sm p-6"
+                    onClick={closeAuthModal}
+                >
+                    <div className="relative glass-card p-8 w-full max-w-md border border-white/10" onClick={(e) => e.stopPropagation()}>
+                        <button onClick={closeAuthModal} className="absolute top-4 right-4 text-gray-400 hover:text-white" aria-label="Cerrar">
+                            <FiX size={20} />
+                        </button>
+                        {authMode === 'register' ? (
+                            <>
+                                <div className="relative flex items-center justify-between mb-4">
+                                    <h2 className="text-2xl font-black tracking-tight">Crear cuenta</h2>
                                 </div>
-                            </div>
-                            <div className="flex items-center justify-between mt-2">
-                                <Link href="/login" className="btn-primary px-6 py-3 text-sm">Entrar</Link>
-                                <Link href="/register" className="btn-secondary px-6 py-3 text-sm">Crear cuenta</Link>
-                            </div>
-                        </div>
+                                <form onSubmit={submitRegister} className="space-y-4">
+                                    <div>
+                                        <input
+                                            type="text"
+                                            placeholder="Nombre"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                            value={registerForm.data.name}
+                                            onChange={(e) => registerForm.setData('name', e.target.value)}
+                                        />
+                                        {registerForm.errors.name && <div className="text-xs text-red-400 mt-1">{registerForm.errors.name}</div>}
+                                    </div>
+                                    <div>
+                                        <input
+                                            type="email"
+                                            placeholder="Email"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                            value={registerForm.data.email}
+                                            onChange={(e) => registerForm.setData('email', e.target.value)}
+                                        />
+                                        {registerForm.errors.email && <div className="text-xs text-red-400 mt-1">{registerForm.errors.email}</div>}
+                                    </div>
+                                    <div>
+                                        <input
+                                            type="password"
+                                            placeholder="Password"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                            value={registerForm.data.password}
+                                            onChange={(e) => registerForm.setData('password', e.target.value)}
+                                        />
+                                        {registerForm.errors.password && <div className="text-xs text-red-400 mt-1">{registerForm.errors.password}</div>}
+                                    </div>
+                                    <div>
+                                        <input
+                                            type="password"
+                                            placeholder="Confirmar password"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                            value={registerForm.data.password_confirmation}
+                                            onChange={(e) => registerForm.setData('password_confirmation', e.target.value)}
+                                        />
+                                        {registerForm.errors.password_confirmation && <div className="text-xs text-red-400 mt-1">{registerForm.errors.password_confirmation}</div>}
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        Al crear la cuenta aceptas <Link href="/privacy-policy" className="link-hover-gradient">Privacidad</Link> y <Link href="/cookies-policy" className="link-hover-gradient">Cookies</Link>.
+                                    </div>
+                                    <div className="flex items-center justify-between mt-2">
+                                        <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={registerForm.processing}>Registrarme</button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                registerForm.reset('password', 'password_confirmation');
+                                                registerForm.clearErrors();
+                                                setAuthMode('login');
+                                            }}
+                                            className="btn-secondary px-6 py-3 text-sm"
+                                        >
+                                            Ya tengo cuenta
+                                        </button>
+                                    </div>
+                                </form>
+                            </>
+                        ) : (
+                            <>
+                                <div className="relative flex items-center justify-between mb-4">
+                                    <h2 className="text-2xl font-black tracking-tight">Acceder</h2>
+                                </div>
+                                <form onSubmit={submitLogin} className="space-y-4">
+                                    <div>
+                                        <input
+                                            type="email"
+                                            placeholder="Email"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                            value={loginForm.data.email}
+                                            onChange={(e) => loginForm.setData('email', e.target.value)}
+                                        />
+                                        {loginForm.errors.email && <div className="text-xs text-red-400 mt-1">{loginForm.errors.email}</div>}
+                                    </div>
+                                    <div>
+                                        <input
+                                            type="password"
+                                            placeholder="Password"
+                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                            value={loginForm.data.password}
+                                            onChange={(e) => loginForm.setData('password', e.target.value)}
+                                        />
+                                        {loginForm.errors.password && <div className="text-xs text-red-400 mt-1">{loginForm.errors.password}</div>}
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <label className="flex items-center gap-2 text-sm text-gray-400 select-none">
+                                            <input
+                                                type="checkbox"
+                                                className="rounded border-white/20 bg-white/5"
+                                                checked={loginForm.data.remember}
+                                                onChange={(e) => loginForm.setData('remember', e.target.checked)}
+                                            />
+                                            Recordarme
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center justify-between mt-2">
+                                        <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={loginForm.processing}>Entrar</button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                loginForm.reset('password');
+                                                loginForm.clearErrors();
+                                                setAuthMode('register');
+                                            }}
+                                            className="btn-secondary px-6 py-3 text-sm"
+                                        >
+                                            Crear cuenta
+                                        </button>
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                        <Link href="/privacy-policy" className="link-hover-gradient">Privacidad</Link>
+                                        <span className="mx-2">•</span>
+                                        <Link href="/cookies-policy" className="link-hover-gradient">Cookies</Link>
+                                    </div>
+                                </form>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

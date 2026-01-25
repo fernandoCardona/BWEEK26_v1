@@ -8,7 +8,7 @@ export default function Footer() {
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center space-y-12 md:space-y-0 text-center md:text-left">
                     <div>
                         <h2 className="text-3xl font-black tracking-tighter mb-4">
-                            BEARS<span className="text-gradient">WEEK</span>
+                            <span className="text-gradient">BEARS SITGES WEEK</span>
                         </h2>
                         <p className="max-w-xs text-gray-500">
                             El festival Bears número uno del mundo.

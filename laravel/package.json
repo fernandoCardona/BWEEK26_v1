@@ -3,7 +3,8 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "watch": "CHOKIDAR_USEPOLLING=1 CHOKIDAR_INTERVAL=200 vite build --watch"
     },
     "devDependencies": {
         "@inertiajs/react": "^2.0.0",
