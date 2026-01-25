@@ -10,7 +10,7 @@ export default function Navigation() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [openKey, setOpenKey] = useState(null);
     const closeTimer = useRef(null);
-    const locales = props.available_locales || { es: 'Español', ca: 'Català', en: 'English' };
+    const locales = { es: 'ES', ca: 'CA', en: 'EN', fr: 'FR', it: 'IT', de: 'DE' };
     const [menu, setMenu] = useState({
         about: [],
         events: [],
@@ -158,16 +158,25 @@ export default function Navigation() {
                 </ul>
 
                 <div className="flex items-center space-x-6">
-                    {/* Language dropdown styled like others */}
-                    <div className="relative group">
+                    {/* Language dropdown accessible */}
+                    <div
+                        className="relative"
+                        onMouseEnter={() => {
+                            if (closeTimer.current) clearTimeout(closeTimer.current);
+                            setOpenKey('lang');
+                        }}
+                        onMouseLeave={() => {
+                            closeTimer.current = setTimeout(() => setOpenKey(null), 120);
+                        }}
+                    >
                         <button className="nav-link flex items-center">ES</button>
-                        <div className="absolute right-0 top-full mt-2 hidden group-hover:block">
+                        <div className={`absolute right-0 top-full ${openKey==='lang' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                             <div className="glass-card p-2">
                                 <ul className="min-w-36">
-                                    {Object.entries(locales).map(([code, name]) => (
+                                    {Object.entries(locales).map(([code]) => (
                                         <li key={code}>
                                             <a href="#" className="block px-3 py-2 text-sm text-gray-300 hover:text-white">
-                                                {code.toUpperCase()} — {name}
+                                                {code.toUpperCase()}
                                             </a>
                                         </li>
                                     ))}
