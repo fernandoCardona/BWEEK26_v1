@@ -26,12 +26,20 @@ class User extends Authenticatable implements JWTSubject
     protected $fillable = [
         'id',
         'name',
+        'last_name',
         'email',
         'phone',
         'telegram_id',
         'telegram_username',
         'password',
         'role',
+        'birth_date',
+        'gender',
+        'address_line1',
+        'address_line2',
+        'city',
+        'postal_code',
+        'country',
         'preferred_locale',
         'registration_source',
         'interests',
@@ -65,6 +73,7 @@ class User extends Authenticatable implements JWTSubject
             'newsletter_subscribed' => 'boolean',
             'terms_accepted_at' => 'datetime',
             'last_login_at' => 'datetime',
+            'birth_date' => 'date',
         ];
     }
 

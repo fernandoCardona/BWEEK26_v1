@@ -10,6 +10,8 @@ use App\Http\Controllers\TicketController;
 use App\Http\Controllers\Admin\UsersController as AdminUsersController;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Controllers\User\DashboardController as UserDashboardController;
+use App\Http\Controllers\User\StoreController as UserStoreController;
 use App\Http\Controllers\WebsiteMenuController;
 use Illuminate\Support\Facades\Route;
 
@@ -66,13 +68,20 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/dashboard', function () {
         $user = request()->user();
         if ($user && in_array($user->role, ['super_admin', 'admin'], true)) {
             return redirect()->route('admin.dashboard');
         }
-        return redirect()->route('profile.edit');
+        return redirect()->route('user.dashboard');
     })->name('dashboard');
+
+    Route::get('/me', function () {
+        return redirect()->route('user.dashboard');
+    })->name('user.home');
+    Route::get('/me/dashboard', [UserDashboardController::class, 'overview'])->name('user.dashboard');
+    Route::get('/me/store', [UserStoreController::class, 'index'])->name('user.store');
 });
 
 Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function () {
