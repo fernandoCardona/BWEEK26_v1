@@ -1,0 +1,22 @@
+/.DS_Store
+/Thumbs.db
+
+/laravel/vendor/
+/laravel/node_modules/
+/laravel/public/build/
+/laravel/public/storage/
+/laravel/storage/*.key
+/laravel/storage/app/*
+/laravel/storage/framework/*
+/laravel/storage/logs/*
+/laravel/bootstrap/cache/*
+
+/laravel/.env
+/laravel/.env.*
+
+# IDE
+/.vscode/
+/.idea/
+
+# Logs
+*.log

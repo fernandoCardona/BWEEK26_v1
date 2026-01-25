@@ -1,0 +1,67 @@
+{
+    "name": "Lead_Management",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "lead-webhook",
+                "options": {}
+            },
+            "name": "Webhook Lead",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                100,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "=http://laravel:80/api/v1/leads",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "name",
+                            "value": "={{$json[\"body\"][\"name\"]}}"
+                        },
+                        {
+                            "name": "email",
+                            "value": "={{$json[\"body\"][\"email\"]}}"
+                        },
+                        {
+                            "name": "source",
+                            "value": "={{$json[\"body\"][\"source\"]}}"
+                        },
+                        {
+                            "name": "interest",
+                            "value": "={{$json[\"body\"][\"interest\"]}}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Create Lead in Laravel",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                300,
+                200
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook Lead": {
+            "main": [
+                [
+                    {
+                        "node": "Create Lead in Laravel",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

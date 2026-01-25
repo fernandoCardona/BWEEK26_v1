@@ -1,0 +1,93 @@
+{
+    "name": "BW_Personal_Assistant",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "chatbot-webhook",
+                "options": {}
+            },
+            "name": "Webhook Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "values": {
+                    "string": [
+                        {
+                            "name": "channel",
+                            "value": "={{$json[\"body\"][\"channel\"]}}"
+                        },
+                        {
+                            "name": "message",
+                            "value": "={{$json[\"body\"][\"message\"]}}"
+                        },
+                        {
+                            "name": "identifier",
+                            "value": "={{$json[\"body\"][\"identifier\"]}}"
+                        }
+                    ]
+                }
+            },
+            "name": "Extract Data",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 1,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "=http://laravel:80/api/v1/chatbot/auth/verify",
+                "authentication": "headerAuth",
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Authorization",
+                            "value": "={{$node[\"Extract Data\"].json[\"token\"]}}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Verify Session",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                650,
+                300
+            ]
+        }
+    ],
+    "connections": {
+        "Webhook Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Extract Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract Data": {
+            "main": [
+                [
+                    {
+                        "node": "Verify Session",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

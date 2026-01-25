@@ -1,0 +1,63 @@
+{
+    "name": "User_Registration",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "registration-webhook",
+                "options": {}
+            },
+            "name": "Registration Trigger",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                100,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "http://laravel:80/api/v1/chatbot/auth/register",
+                "sendBody": true,
+                "bodyParameters": {
+                    "parameters": [
+                        {
+                            "name": "name",
+                            "value": "={{$json[\"body\"][\"name\"]}}"
+                        },
+                        {
+                            "name": "email",
+                            "value": "={{$json[\"body\"][\"email\"]}}"
+                        },
+                        {
+                            "name": "password",
+                            "value": "={{$json[\"body\"][\"password\"]}}"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "name": "Laravel Register API",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                300,
+                200
+            ]
+        }
+    ],
+    "connections": {
+        "Registration Trigger": {
+            "main": [
+                [
+                    {
+                        "node": "Laravel Register API",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}

@@ -1,0 +1,55 @@
+{
+    "name": "Newsletter_Campaign",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "weeks",
+                            "value": 1,
+                            "weekday": [
+                                5
+                            ],
+                            "hour": 18
+                        }
+                    ]
+                }
+            },
+            "name": "Schedule Friday 18:00",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                100,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "GET",
+                "url": "http://laravel:80/api/v1/newsletter/campaigns",
+                "options": {}
+            },
+            "name": "Get Pending Campaigns",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.1,
+            "position": [
+                300,
+                200
+            ]
+        }
+    ],
+    "connections": {
+        "Schedule Friday 18:00": {
+            "main": [
+                [
+                    {
+                        "node": "Get Pending Campaigns",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    }
+}
