@@ -26,12 +26,14 @@
 
 @layer components {
     .nav-link {
-        @apply relative text-gray-400 hover:text-white transition-colors duration-300;
+        @apply relative text-gray-400 transition-all duration-300;
+        @apply hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-accent-primary hover:via-accent-secondary hover:to-accent-tertiary;
     }
 
     .nav-link::after {
         content: '';
-        @apply absolute bottom-0 left-0 w-0 h-0.5 bg-accent-primary transition-all duration-300;
+        @apply absolute bottom-0 left-0 w-0 h-0.5 transition-all duration-300;
+        @apply bg-gradient-to-r from-accent-primary via-accent-secondary to-accent-tertiary;
     }
 
     .nav-link:hover::after {
@@ -40,13 +42,15 @@
 
     .btn-primary {
         @apply px-8 py-4 bg-white text-black font-bold rounded-full transition-all duration-300;
-        @apply hover:bg-accent-primary hover:text-white hover:scale-105;
+        @apply hover:text-white hover:scale-105;
+        @apply hover:bg-gradient-to-r hover:from-accent-primary hover:via-accent-secondary hover:to-accent-tertiary;
         @apply active:scale-95;
     }
 
     .btn-secondary {
         @apply px-8 py-4 bg-transparent text-white font-bold rounded-full border border-white/20;
-        @apply hover:bg-white/10 hover:border-white transition-all duration-300;
+        @apply hover:bg-white/5 hover:border-white/40 transition-all duration-300;
+        @apply hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-accent-primary hover:via-accent-secondary hover:to-accent-tertiary;
         @apply active:scale-95;
     }
 
@@ -63,7 +67,7 @@
         @apply relative inline-flex items-center justify-center text-gray-400 transition-all duration-300;
     }
     .icon-btn:hover {
-        @apply text-white scale-110;
+        @apply text-accent-tertiary scale-110;
     }
     .icon-btn-gradient::before {
         content: "";
@@ -78,5 +82,10 @@
     }
     .icon-btn-gradient:hover::before {
         opacity: 0.9;
+    }
+
+    .link-hover-gradient {
+        @apply text-gray-500 transition-colors;
+        @apply hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-accent-primary hover:via-accent-secondary hover:to-accent-tertiary;
     }
 }

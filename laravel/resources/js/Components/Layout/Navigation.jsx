@@ -201,7 +201,16 @@ export default function Navigation() {
                         </div>
                     ) : (
                         <div className="flex items-center gap-3">
-                            <button onClick={() => setLoginOpen(true)} className="btn-primary py-2 px-5 text-sm">Acceder</button>
+                            <button
+                                onClick={() => {
+                                    setMobileOpen(false);
+                                    setOpenKey(null);
+                                    setLoginOpen(true);
+                                }}
+                                className="btn-primary py-2 px-5 text-sm"
+                            >
+                                Acceder
+                            </button>
                         </div>
                     )}
                 </div>
@@ -256,7 +265,16 @@ export default function Navigation() {
                         {props.auth?.user ? (
                             <Link href={route('logout')} method="post" as="button" className="btn-secondary w-full py-3">Salir</Link>
                         ) : (
-                            <button onClick={() => setLoginOpen(true)} className="btn-primary w-full py-3">Acceder</button>
+                            <button
+                                onClick={() => {
+                                    setMobileOpen(false);
+                                    setOpenKey(null);
+                                    setLoginOpen(true);
+                                }}
+                                className="btn-primary w-full py-3"
+                            >
+                                Acceder
+                            </button>
                         )}
                     </div>
                 </div>
@@ -264,7 +282,7 @@ export default function Navigation() {
 
             {/* Login Modal */}
             {loginOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[100] flex min-h-screen items-center justify-center bg-black/60 backdrop-blur-sm p-6">
                     <div className="glass-card p-8 w-full max-w-md border border-white/10">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-2xl font-black tracking-tight">Acceder</h2>
@@ -273,6 +291,17 @@ export default function Navigation() {
                         <div className="space-y-4">
                             <input type="email" placeholder="Email" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3" />
                             <input type="password" placeholder="Password" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3" />
+                            <div className="flex items-center justify-between">
+                                <label className="flex items-center gap-2 text-sm text-gray-400 select-none">
+                                    <input type="checkbox" className="rounded border-white/20 bg-white/5" />
+                                    Recordarme
+                                </label>
+                                <div className="text-xs text-gray-500">
+                                    <Link href="/privacy-policy" className="link-hover-gradient">Privacidad</Link>
+                                    <span className="mx-2">•</span>
+                                    <Link href="/cookies-policy" className="link-hover-gradient">Cookies</Link>
+                                </div>
+                            </div>
                             <div className="flex items-center justify-between mt-2">
                                 <Link href="/login" className="btn-primary px-6 py-3 text-sm">Entrar</Link>
                                 <Link href="/register" className="btn-secondary px-6 py-3 text-sm">Crear cuenta</Link>
