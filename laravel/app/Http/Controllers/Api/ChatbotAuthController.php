@@ -68,7 +68,16 @@ class ChatbotAuthController extends Controller
     {
         try {
             $user = JWTAuth::parseToken()->authenticate();
-            return response()->json(['valid' => true, 'user' => $user]);
+            return response()->json([
+                'valid' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role,
+                    'locale' => $user->preferred_locale,
+                ],
+            ]);
         } catch (\Exception $e) {
             return response()->json(['valid' => false, 'error' => 'Invalid or expired token'], 401);
         }
