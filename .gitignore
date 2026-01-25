@@ -4,6 +4,7 @@
 /laravel/vendor/
 /laravel/node_modules/
 /laravel/public/build/
+/laravel/public/storage
 /laravel/public/storage/
 /laravel/storage/*.key
 /laravel/storage/app/*
