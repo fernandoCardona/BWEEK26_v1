@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\ChatbotWebController;
 use App\Http\Controllers\TicketController;
 use App\Http\Middleware\EnsureSuperAdmin;
+use App\Http\Controllers\WebsiteMenuController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PageController::class, 'home'])->name('home');
@@ -27,6 +28,33 @@ Route::get('/events', [\App\Http\Controllers\EventController::class, 'index'])->
 Route::get('/events/{event}', [\App\Http\Controllers\EventController::class, 'show'])->name('events.show');
 
 Route::post('/chatbot/message', [ChatbotWebController::class, 'message'])->name('chatbot.message');
+
+Route::get('/menu/{category}/items', [WebsiteMenuController::class, 'categoryJson'])->name('menu.items');
+
+Route::get('/about', [WebsiteMenuController::class, 'category'])->defaults('category', 'about')->name('about.index');
+Route::get('/about/{page}', function ($page) {
+    return app(WebsiteMenuController::class)->page('about', $page);
+})->name('about.page');
+
+Route::get('/events', [WebsiteMenuController::class, 'category'])->defaults('category', 'events')->name('events.menu');
+Route::get('/events/{page}', function ($page) {
+    return app(WebsiteMenuController::class)->page('events', $page);
+})->name('events.page');
+
+Route::get('/magazine', [WebsiteMenuController::class, 'category'])->defaults('category', 'magazine')->name('magazine.index');
+Route::get('/magazine/{page}', function ($page) {
+    return app(WebsiteMenuController::class)->page('magazine', $page);
+})->name('magazine.page');
+
+Route::get('/recomendations', [WebsiteMenuController::class, 'category'])->defaults('category', 'recomendations')->name('recomendations.index');
+Route::get('/recomendations/{page}', function ($page) {
+    return app(WebsiteMenuController::class)->page('recomendations', $page);
+})->name('recomendations.page');
+
+Route::get('/store', [WebsiteMenuController::class, 'category'])->defaults('category', 'store')->name('store.index');
+Route::get('/store/{page}', function ($page) {
+    return app(WebsiteMenuController::class)->page('store', $page);
+})->name('store.page');
 
 Route::middleware('auth')->group(function () {
     Route::get('/me/tickets', [TicketController::class, 'myTickets'])->name('tickets.my');
@@ -71,7 +99,7 @@ Route::middleware(['auth', EnsureSuperAdmin::class])->prefix('admin')->group(fun
 });
 
 Route::get('/{slug}', [PageController::class, 'show'])
-    ->where('slug', '^(?!api|admin|dashboard|events|shop|login|register|logout|profile).+')
+    ->where('slug', '^(?!api|admin|dashboard|events|about|magazine|recomendations|store|shop|login|register|logout|profile).+')
     ->name('pages.show');
 
 require __DIR__ . '/auth.php';

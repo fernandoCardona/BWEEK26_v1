@@ -1,6 +1,7 @@
 import React from 'react';
 
 export default function Footer() {
+    const version = import.meta.env.VITE_APP_VERSION || 'dev';
     return (
         <footer className="py-20 border-t border-white/10 bg-black">
             <div className="container mx-auto px-6">
@@ -36,7 +37,7 @@ export default function Footer() {
                 </div>
 
                 <div className="mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center text-sm text-gray-600">
-                    <p>© 2026 Bears Week Sitges. Todos los derechos reservados.</p>
+                    <p>© 2026 Bears Week Sitges. Todos los derechos reservados. <span className="ml-2 px-2 py-1 rounded bg-white/5 border border-white/10">v{version}</span></p>
                     <div className="flex space-x-6 mt-4 md:mt-0">
                         <a href="#" className="hover:text-accent-primary transition-colors">Instagram</a>
                         <a href="#" className="hover:text-accent-primary transition-colors">Telegram</a>

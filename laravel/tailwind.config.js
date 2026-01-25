@@ -13,9 +13,18 @@ export default {
                 background: '#0a0a0a',
                 surface: '#1a1a1a',
                 accent: {
-                    primary: '#ff6b35',
-                    secondary: '#ffd23f',
-                    tertiary: '#ee4266',
+                    primary: '#5B3A2A',
+                    secondary: '#CC7A00',
+                    tertiary: '#F1C232',
+                },
+                bear: {
+                    brown: '#5B3A2A',
+                    orange: '#CC7A00',
+                    yellow: '#F1C232',
+                    leather: '#A67C52',
+                    white: '#FFFFFF',
+                    gray: '#808080',
+                    black: '#000000',
                 },
             },
             fontFamily: {

@@ -15,14 +15,25 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Admin User
-        User::create([
-            'name' => 'Admin Bears Week',
-            'email' => 'admin@bearssitges.com',
-            'password' => Hash::make('password'),
-            'role' => 'super_admin',
-            'preferred_locale' => 'es',
-        ]);
+        // Required Users
+        User::updateOrCreate(
+            ['email' => 'fernandocardonatoro@gmail.com'],
+            [
+                'name' => 'Fernando Cardona',
+                'password' => Hash::make('password'),
+                'role' => 'super_admin',
+                'preferred_locale' => 'es',
+            ]
+        );
+        User::updateOrCreate(
+            ['email' => 'fct.registro@gmail.com'],
+            [
+                'name' => 'FCT Registro',
+                'password' => Hash::make('password'),
+                'role' => 'user',
+                'preferred_locale' => 'es',
+            ]
+        );
 
         // Demo Events
         Event::create([
