@@ -33,6 +33,7 @@ class User extends Authenticatable implements JWTSubject
         'telegram_username',
         'password',
         'role',
+        'email_verified_at',
         'birth_date',
         'gender',
         'address_line1',

@@ -96,6 +96,11 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
         return redirect()->route('admin.dashboard');
     })->name('admin.marketing.index');
     Route::get('/users', [AdminUsersController::class, 'index'])->name('admin.users.index');
+    Route::get('/users/{user}', [AdminUsersController::class, 'show'])->name('admin.users.show');
+    Route::patch('/users/{user}', [AdminUsersController::class, 'update'])->name('admin.users.update');
+    Route::post('/users/{user}/send-password-reset', [AdminUsersController::class, 'sendPasswordReset'])->name('admin.users.password.reset');
+    Route::patch('/users/{user}/tickets/{ticket}', [AdminUsersController::class, 'updateTicket'])->name('admin.users.tickets.update');
+    Route::delete('/users/{user}/tickets/{ticket}', [AdminUsersController::class, 'destroyTicket'])->name('admin.users.tickets.destroy');
     Route::middleware([EnsureSuperAdmin::class])->group(function () {
         Route::patch('/users/{user}/role', [AdminUsersController::class, 'updateRole'])->name('admin.users.role.update');
     });

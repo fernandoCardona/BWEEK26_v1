@@ -45,20 +45,30 @@ export default function Navigation() {
         remember: false,
     });
 
-    const registerForm = useForm({
+    const [registerStep, setRegisterStep] = useState('request');
+
+    const registerRequestForm = useForm({
         name: '',
         email: '',
         password: '',
         password_confirmation: '',
     });
 
+    const registerVerifyForm = useForm({
+        email: '',
+        verification_code: '',
+    });
+
     const closeAuthModal = () => {
         setLoginOpen(false);
         setAuthMode('login');
+        setRegisterStep('request');
         loginForm.reset('password');
-        registerForm.reset('password', 'password_confirmation');
+        registerRequestForm.reset('password', 'password_confirmation');
+        registerVerifyForm.reset('verification_code');
         loginForm.clearErrors();
-        registerForm.clearErrors();
+        registerRequestForm.clearErrors();
+        registerVerifyForm.clearErrors();
     };
 
     const openLoginModal = () => {
@@ -68,6 +78,7 @@ export default function Navigation() {
 
     const openRegisterModal = () => {
         setAuthMode('register');
+        setRegisterStep('request');
         setLoginOpen(true);
     };
 
@@ -79,11 +90,22 @@ export default function Navigation() {
         });
     };
 
-    const submitRegister = (e) => {
+    const submitRegisterRequestCode = (e) => {
         e.preventDefault();
-        registerForm.post(route('register'), {
+        registerRequestForm.post(route('register.request_code'), {
+            onSuccess: () => {
+                setRegisterStep('code');
+                registerVerifyForm.setData('email', registerRequestForm.data.email);
+                registerRequestForm.reset('password', 'password_confirmation');
+            },
+        });
+    };
+
+    const submitRegisterVerifyCode = (e) => {
+        e.preventDefault();
+        registerVerifyForm.post(route('register'), {
             onSuccess: () => closeAuthModal(),
-            onFinish: () => registerForm.reset('password', 'password_confirmation'),
+            onFinish: () => registerVerifyForm.reset('verification_code'),
         });
     };
 
@@ -344,65 +366,99 @@ export default function Navigation() {
                                 <div className="relative flex items-center justify-between mb-4">
                                     <h2 className="text-2xl font-black tracking-tight">Crear cuenta</h2>
                                 </div>
-                                <form onSubmit={submitRegister} className="space-y-4">
-                                    <div>
-                                        <input
-                                            type="text"
-                                            placeholder="Nombre"
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
-                                            value={registerForm.data.name}
-                                            onChange={(e) => registerForm.setData('name', e.target.value)}
-                                        />
-                                        {registerForm.errors.name && <div className="text-xs text-red-400 mt-1">{registerForm.errors.name}</div>}
-                                    </div>
-                                    <div>
-                                        <input
-                                            type="email"
-                                            placeholder="Email"
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
-                                            value={registerForm.data.email}
-                                            onChange={(e) => registerForm.setData('email', e.target.value)}
-                                        />
-                                        {registerForm.errors.email && <div className="text-xs text-red-400 mt-1">{registerForm.errors.email}</div>}
-                                    </div>
-                                    <div>
-                                        <input
-                                            type="password"
-                                            placeholder="Password"
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
-                                            value={registerForm.data.password}
-                                            onChange={(e) => registerForm.setData('password', e.target.value)}
-                                        />
-                                        {registerForm.errors.password && <div className="text-xs text-red-400 mt-1">{registerForm.errors.password}</div>}
-                                    </div>
-                                    <div>
-                                        <input
-                                            type="password"
-                                            placeholder="Confirmar password"
-                                            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
-                                            value={registerForm.data.password_confirmation}
-                                            onChange={(e) => registerForm.setData('password_confirmation', e.target.value)}
-                                        />
-                                        {registerForm.errors.password_confirmation && <div className="text-xs text-red-400 mt-1">{registerForm.errors.password_confirmation}</div>}
-                                    </div>
-                                    <div className="text-xs text-gray-500">
-                                        Al crear la cuenta aceptas <Link href="/privacy-policy" className="link-hover-gradient">Política de Privacidad</Link> y <Link href="/cookies-policy" className="link-hover-gradient">Política de Cookies</Link>.
-                                    </div>
-                                    <div className="flex items-center justify-between mt-2">
-                                        <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={registerForm.processing}>Registrarme</button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                registerForm.reset('password', 'password_confirmation');
-                                                registerForm.clearErrors();
-                                                setAuthMode('login');
-                                            }}
-                                            className="btn-secondary px-6 py-3 text-sm"
-                                        >
-                                            Ya tengo cuenta
-                                        </button>
-                                    </div>
-                                </form>
+                                {registerStep === 'request' ? (
+                                    <form onSubmit={submitRegisterRequestCode} className="space-y-4">
+                                        <div>
+                                            <input
+                                                type="text"
+                                                placeholder="Nombre"
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                                value={registerRequestForm.data.name}
+                                                onChange={(e) => registerRequestForm.setData('name', e.target.value)}
+                                            />
+                                            {registerRequestForm.errors.name && <div className="text-xs text-red-400 mt-1">{registerRequestForm.errors.name}</div>}
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="email"
+                                                placeholder="Email"
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                                value={registerRequestForm.data.email}
+                                                onChange={(e) => registerRequestForm.setData('email', e.target.value)}
+                                            />
+                                            {registerRequestForm.errors.email && <div className="text-xs text-red-400 mt-1">{registerRequestForm.errors.email}</div>}
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="password"
+                                                placeholder="Password"
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                                value={registerRequestForm.data.password}
+                                                onChange={(e) => registerRequestForm.setData('password', e.target.value)}
+                                            />
+                                            {registerRequestForm.errors.password && <div className="text-xs text-red-400 mt-1">{registerRequestForm.errors.password}</div>}
+                                        </div>
+                                        <div>
+                                            <input
+                                                type="password"
+                                                placeholder="Confirmar password"
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                                value={registerRequestForm.data.password_confirmation}
+                                                onChange={(e) => registerRequestForm.setData('password_confirmation', e.target.value)}
+                                            />
+                                            {registerRequestForm.errors.password_confirmation && <div className="text-xs text-red-400 mt-1">{registerRequestForm.errors.password_confirmation}</div>}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            Al crear la cuenta aceptas <Link href="/privacy-policy" className="link-hover-gradient">Política de Privacidad</Link> y <Link href="/cookies-policy" className="link-hover-gradient">Política de Cookies</Link>.
+                                        </div>
+                                        <div className="flex items-center justify-between mt-2">
+                                            <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={registerRequestForm.processing}>Enviar código</button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    registerRequestForm.reset('password', 'password_confirmation');
+                                                    registerRequestForm.clearErrors();
+                                                    setAuthMode('login');
+                                                }}
+                                                className="btn-secondary px-6 py-3 text-sm"
+                                            >
+                                                Ya tengo cuenta
+                                            </button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <form onSubmit={submitRegisterVerifyCode} className="space-y-4">
+                                        <p className="text-sm text-gray-400">
+                                            Hemos enviado un código de 6 dígitos a <span className="text-white">{registerVerifyForm.data.email}</span>.
+                                        </p>
+                                        <div>
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                placeholder="Código de verificación"
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                                value={registerVerifyForm.data.verification_code}
+                                                onChange={(e) => registerVerifyForm.setData('verification_code', e.target.value)}
+                                            />
+                                            {registerVerifyForm.errors.verification_code && <div className="text-xs text-red-400 mt-1">{registerVerifyForm.errors.verification_code}</div>}
+                                            {registerVerifyForm.errors.email && <div className="text-xs text-red-400 mt-1">{registerVerifyForm.errors.email}</div>}
+                                        </div>
+                                        <div className="flex items-center justify-between mt-2">
+                                            <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={registerVerifyForm.processing}>Verificar y crear cuenta</button>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    registerVerifyForm.reset('verification_code');
+                                                    registerVerifyForm.clearErrors();
+                                                    setRegisterStep('request');
+                                                }}
+                                                className="btn-secondary px-6 py-3 text-sm"
+                                            >
+                                                Reenviar
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
                             </>
                         ) : (
                             <>
