@@ -16,7 +16,24 @@ class AuthenticatedSessionController extends Controller
 
     public function store(Request $request)
     {
-        return redirect()->intended(route('home'));
+        $credentials = $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string'],
+            'remember' => ['sometimes', 'boolean'],
+        ]);
+
+        $remember = (bool) ($credentials['remember'] ?? false);
+        unset($credentials['remember']);
+
+        if (!Auth::guard('web')->attempt($credentials, $remember)) {
+            return back()->withErrors([
+                'email' => 'Las credenciales no son correctas.',
+            ])->onlyInput('email');
+        }
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard'));
     }
 
     public function destroy(Request $request)
