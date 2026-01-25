@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import Layout from '@/Layouts/Layout';
 import { motion as m } from 'framer-motion';
 
@@ -11,6 +11,8 @@ export default function AdminLayout({
   containerClassName = '',
   children,
 }) {
+  const { props } = usePage();
+  const role = props?.auth?.user?.role;
   const tabs = [
     { key: 'overview', label: 'Overview', href: route('admin.dashboard') },
     { key: 'cms', label: 'CMS', href: route('admin.pages.index') },
@@ -19,7 +21,7 @@ export default function AdminLayout({
     { key: 'marketing', label: 'Marketing', href: route('admin.marketing.index') },
     { key: 'users', label: 'Users', href: route('admin.users.index') },
     { key: 'settings', label: 'Settings', href: route('admin.settings') },
-  ];
+  ].filter((t) => (t.key === 'users' ? role === 'super_admin' : true));
 
   return (
     <Layout>

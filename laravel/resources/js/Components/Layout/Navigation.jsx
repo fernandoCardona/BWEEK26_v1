@@ -386,7 +386,7 @@ export default function Navigation() {
                                         {registerForm.errors.password_confirmation && <div className="text-xs text-red-400 mt-1">{registerForm.errors.password_confirmation}</div>}
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                        Al crear la cuenta aceptas <Link href="/privacy-policy" className="link-hover-gradient">Privacidad</Link> y <Link href="/cookies-policy" className="link-hover-gradient">Cookies</Link>.
+                                        Al crear la cuenta aceptas <Link href="/privacy-policy" className="link-hover-gradient">Política de Privacidad</Link> y <Link href="/cookies-policy" className="link-hover-gradient">Política de Cookies</Link>.
                                     </div>
                                     <div className="flex items-center justify-between mt-2">
                                         <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={registerForm.processing}>Registrarme</button>
@@ -456,9 +456,9 @@ export default function Navigation() {
                                         </button>
                                     </div>
                                     <div className="text-xs text-gray-500">
-                                        <Link href="/privacy-policy" className="link-hover-gradient">Privacidad</Link>
+                                        <Link href="/privacy-policy" className="link-hover-gradient">Política de Privacidad</Link>
                                         <span className="mx-2">•</span>
-                                        <Link href="/cookies-policy" className="link-hover-gradient">Cookies</Link>
+                                        <Link href="/cookies-policy" className="link-hover-gradient">Política de Cookies</Link>
                                     </div>
                                 </form>
                             </>

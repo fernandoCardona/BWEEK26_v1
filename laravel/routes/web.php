@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\PagesController as AdminPagesController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\ChatbotWebController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\Admin\UsersController as AdminUsersController;
+use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Controllers\WebsiteMenuController;
 use Illuminate\Support\Facades\Route;
@@ -66,14 +68,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('/dashboard', function () {
         $user = request()->user();
-        if ($user && $user->role === 'super_admin') {
+        if ($user && in_array($user->role, ['super_admin', 'admin'], true)) {
             return redirect()->route('admin.dashboard');
         }
         return redirect()->route('profile.edit');
     })->name('dashboard');
 });
 
-Route::middleware(['auth', EnsureSuperAdmin::class])->prefix('admin')->group(function () {
+Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function () {
     Route::get('/dashboard', AdminDashboardController::class)->name('admin.dashboard');
     Route::get('/ecommerce', function () {
         return redirect()->route('admin.dashboard');
@@ -84,9 +86,10 @@ Route::middleware(['auth', EnsureSuperAdmin::class])->prefix('admin')->group(fun
     Route::get('/marketing', function () {
         return redirect()->route('admin.dashboard');
     })->name('admin.marketing.index');
-    Route::get('/users', function () {
-        return redirect()->route('admin.dashboard');
-    })->name('admin.users.index');
+    Route::get('/users', [AdminUsersController::class, 'index'])->name('admin.users.index');
+    Route::middleware([EnsureSuperAdmin::class])->group(function () {
+        Route::patch('/users/{user}/role', [AdminUsersController::class, 'updateRole'])->name('admin.users.role.update');
+    });
     Route::get('/pages', [AdminPagesController::class, 'index'])->name('admin.pages.index');
     Route::get('/pages/{page}', [AdminPagesController::class, 'edit'])->name('admin.pages.edit');
     Route::patch('/pages/{page}', [AdminPagesController::class, 'update'])->name('admin.pages.update');
