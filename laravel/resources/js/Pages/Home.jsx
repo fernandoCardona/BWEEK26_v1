@@ -42,7 +42,7 @@ export default function Home() {
                             </span>
                             <h1 className="text-7xl md:text-[120px] font-black tracking-tighter mb-8 leading-[0.9] text-white">
                                 WE ARE <br />
-                                <span className="text-gradient">BEARS WEEK</span>
+                                BEARS <span className="text-gradient">WEEK</span>
                             </h1>
                             <p className="max-w-xl mx-auto text-lg md:text-xl text-gray-400 mb-12 font-medium leading-relaxed">
                                 El epicentro mundial de la cultura bear.

@@ -60,9 +60,23 @@
     }
 
     .icon-btn {
-        @apply inline-flex items-center justify-center text-gray-400 transition-all duration-300;
+        @apply relative inline-flex items-center justify-center text-gray-400 transition-all duration-300;
     }
     .icon-btn:hover {
-        @apply text-accent-primary scale-110;
+        @apply text-white scale-110;
+    }
+    .icon-btn-gradient::before {
+        content: "";
+        position: absolute;
+        inset: -10px;
+        border-radius: 9999px;
+        background: linear-gradient(90deg, #5B3A2A 0%, #CC7A00 50%, #F1C232 100%);
+        opacity: 0;
+        filter: blur(12px);
+        transition: opacity 200ms ease;
+        z-index: -1;
+    }
+    .icon-btn-gradient:hover::before {
+        opacity: 0.9;
     }
 }

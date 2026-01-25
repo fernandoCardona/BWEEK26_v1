@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import { FiLogOut, FiShoppingCart, FiUser } from 'react-icons/fi';
 
 export default function Navigation() {
     const { url, props } = usePage();
@@ -11,6 +12,7 @@ export default function Navigation() {
     const [openKey, setOpenKey] = useState(null);
     const closeTimer = useRef(null);
     const locales = { es: 'ES', ca: 'CA', en: 'EN', fr: 'FR', it: 'IT', de: 'DE' };
+    const currentLocale = (props.locale || 'es').toUpperCase();
     const [menu, setMenu] = useState({
         about: [],
         events: [],
@@ -169,7 +171,7 @@ export default function Navigation() {
                             closeTimer.current = setTimeout(() => setOpenKey(null), 120);
                         }}
                     >
-                        <button className="nav-link flex items-center">ES</button>
+                        <button className="nav-link flex items-center">{currentLocale}</button>
                         <div className={`absolute right-0 top-full ${openKey==='lang' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                             <div className="glass-card p-2">
                                 <ul className="min-w-36">
@@ -188,29 +190,18 @@ export default function Navigation() {
                     {props.auth?.user ? (
                         <div className="flex items-center gap-4">
                             <Link href={route('cart.index')} className="icon-btn" aria-label="Carrito">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                    <path d="M6 6h15l-1.5 9h-11L6 6z" stroke="currentColor" strokeWidth="1.5" />
-                                    <circle cx="9" cy="20" r="1.3" fill="currentColor" />
-                                    <circle cx="18" cy="20" r="1.3" fill="currentColor" />
-                                </svg>
+                                <FiShoppingCart size={20} />
                             </Link>
                             <div className="icon-btn">
-                                <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold">
-                                    {props.auth.user.name?.[0]?.toUpperCase() || 'U'}
-                                </div>
+                                <FiUser size={20} />
                             </div>
                             <Link href={route('logout')} method="post" as="button" className="icon-btn" aria-label="Logout">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                    <path d="M15 12H5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                                    <path d="M11 8l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                    <path d="M19 4v16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                                </svg>
+                                <FiLogOut size={20} />
                             </Link>
                         </div>
                     ) : (
                         <div className="flex items-center gap-3">
                             <button onClick={() => setLoginOpen(true)} className="btn-primary py-2 px-5 text-sm">Acceder</button>
-                            <Link href="/register" className="btn-secondary py-2 px-5 text-sm">Registro</Link>
                         </div>
                     )}
                 </div>
