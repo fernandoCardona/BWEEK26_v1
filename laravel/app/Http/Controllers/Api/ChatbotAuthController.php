@@ -39,6 +39,11 @@ class ChatbotAuthController extends Controller
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
+        if ($user->is_active === false) {
+            $this->logAuth($request, $user->id, 'disabled_user_login');
+            return response()->json(['error' => 'User disabled'], 403);
+        }
+
         if (!$user->email_verified_at && $request->channel === 'web') {
             return response()->json(['error' => 'Email not verified', 'action' => 'verify_email'], 403);
         }

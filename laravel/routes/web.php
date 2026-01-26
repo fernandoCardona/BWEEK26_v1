@@ -69,6 +69,8 @@ Route::middleware('auth')->group(function () {
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/send-password-reset', [ProfileController::class, 'sendPasswordReset'])->name('profile.password.reset');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/dashboard', function () {
         $user = request()->user();
         if ($user && in_array($user->role, ['super_admin', 'admin'], true)) {
@@ -96,9 +98,12 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
         return redirect()->route('admin.dashboard');
     })->name('admin.marketing.index');
     Route::get('/users', [AdminUsersController::class, 'index'])->name('admin.users.index');
+    Route::post('/users', [AdminUsersController::class, 'store'])->name('admin.users.store');
     Route::get('/users/{user}', [AdminUsersController::class, 'show'])->name('admin.users.show');
     Route::patch('/users/{user}', [AdminUsersController::class, 'update'])->name('admin.users.update');
+    Route::patch('/users/{user}/active', [AdminUsersController::class, 'toggleActive'])->name('admin.users.active');
     Route::post('/users/{user}/send-password-reset', [AdminUsersController::class, 'sendPasswordReset'])->name('admin.users.password.reset');
+    Route::delete('/users/{user}', [AdminUsersController::class, 'destroy'])->name('admin.users.destroy');
     Route::patch('/users/{user}/tickets/{ticket}', [AdminUsersController::class, 'updateTicket'])->name('admin.users.tickets.update');
     Route::delete('/users/{user}/tickets/{ticket}', [AdminUsersController::class, 'destroyTicket'])->name('admin.users.tickets.destroy');
     Route::middleware([EnsureSuperAdmin::class])->group(function () {

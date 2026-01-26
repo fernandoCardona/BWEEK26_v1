@@ -31,6 +31,16 @@ class AuthenticatedSessionController extends Controller
             ])->onlyInput('email');
         }
 
+        $user = $request->user();
+        if ($user && $user->is_active === false) {
+            Auth::guard('web')->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return back()->withErrors([
+                'email' => 'Tu cuenta está deshabilitada. Contacta con soporte.',
+            ])->onlyInput('email');
+        }
+
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard'));

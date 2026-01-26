@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -17,7 +20,7 @@ class UsersController extends Controller
         $q = $request->string('q');
 
         $users = User::query()
-            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'created_at'])
+            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'is_active', 'created_at'])
             ->when($q->isNotEmpty(), function ($query) use ($q) {
                 $term = '%' . $q->toString() . '%';
                 $query->where(function ($sub) use ($term) {
@@ -51,7 +54,7 @@ class UsersController extends Controller
         $q = $request->string('q');
 
         $users = User::query()
-            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'created_at'])
+            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'is_active', 'created_at'])
             ->when($q->isNotEmpty(), function ($query) use ($q) {
                 $term = '%' . $q->toString() . '%';
                 $query->where(function ($sub) use ($term) {
@@ -102,9 +105,12 @@ class UsersController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'last_name' => $user->last_name,
+                'nickname' => $user->nickname,
+                'avatar_url' => $user->avatar_url,
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'role' => $user->role,
+                'is_active' => (bool) $user->is_active,
                 'birth_date' => optional($user->birth_date)->format('Y-m-d'),
                 'gender' => $user->gender,
                 'address_line1' => $user->address_line1,
@@ -134,6 +140,7 @@ class UsersController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'last_name' => ['nullable', 'string', 'max:255'],
+            'nickname' => ['nullable', 'string', 'max:80'],
             'birth_date' => ['nullable', 'date'],
             'gender' => ['nullable', 'string', 'in:male,female,other,prefer_not_say'],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
@@ -144,6 +151,7 @@ class UsersController extends Controller
             'postal_code' => ['nullable', 'string', 'max:30'],
             'country' => ['nullable', 'string', 'max:2'],
             'no_newsletter' => ['nullable', 'boolean'],
+            'avatar' => ['nullable', 'image', 'max:2048'],
         ]);
 
         $emailChanged = $data['email'] !== $user->email;
@@ -151,6 +159,7 @@ class UsersController extends Controller
         $user->fill([
             'name' => $data['name'],
             'last_name' => $data['last_name'] ?? null,
+            'nickname' => $data['nickname'] ?? null,
             'birth_date' => $data['birth_date'] ?? null,
             'gender' => $data['gender'] ?? null,
             'email' => $data['email'],
@@ -162,6 +171,14 @@ class UsersController extends Controller
             'country' => strtoupper($data['country'] ?? '') ?: null,
             'newsletter_subscribed' => !((bool) ($data['no_newsletter'] ?? false)),
         ]);
+
+        if ($request->hasFile('avatar')) {
+            if ($user->avatar_path) {
+                Storage::disk('public')->delete($user->avatar_path);
+            }
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar_path = $path;
+        }
 
         if ($emailChanged) {
             $user->email_verified_at = null;
@@ -176,6 +193,101 @@ class UsersController extends Controller
     {
         Password::sendResetLink(['email' => $user->email]);
         return back();
+    }
+
+    public function store(Request $request)
+    {
+        $authUser = $request->user();
+        if (!$authUser || $authUser->role !== 'super_admin') {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'last_name' => ['nullable', 'string', 'max:255'],
+            'nickname' => ['nullable', 'string', 'max:80'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'role' => ['required', 'string', 'in:user,admin,super_admin'],
+        ]);
+
+        $tempPassword = Str::random(32);
+
+        $user = User::create([
+            'name' => $data['name'],
+            'last_name' => $data['last_name'] ?? null,
+            'nickname' => $data['nickname'] ?? null,
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'role' => $data['role'] ?? 'user',
+            'password' => Hash::make($tempPassword),
+            'email_verified_at' => now(),
+            'is_active' => true,
+        ]);
+
+        Password::sendResetLink(['email' => $user->email]);
+
+        return redirect()->route('admin.users.show', $user->id);
+    }
+
+    public function toggleActive(Request $request, User $user)
+    {
+        $authUser = $request->user();
+        if (!$authUser) {
+            abort(403);
+        }
+        if ($authUser->id === $user->id) {
+            return back()->withErrors([
+                'user' => 'No puedes deshabilitar tu propia cuenta.',
+            ]);
+        }
+
+        $allowed = false;
+        if ($authUser->role === 'super_admin') {
+            $allowed = in_array($user->role, ['user', 'admin'], true);
+        } elseif ($authUser->role === 'admin') {
+            $allowed = $user->role === 'user';
+        }
+        if (!$allowed) {
+            abort(403);
+        }
+
+        $user->update([
+            'is_active' => !$user->is_active,
+        ]);
+
+        return back();
+    }
+
+    public function destroy(Request $request, User $user)
+    {
+        $authUser = $request->user();
+        if (!$authUser) {
+            abort(403);
+        }
+        if ($authUser->id === $user->id) {
+            return back()->withErrors([
+                'user' => 'No puedes eliminar tu propia cuenta desde aquí.',
+            ]);
+        }
+
+        $allowed = false;
+        if ($authUser->role === 'super_admin') {
+            $allowed = in_array($user->role, ['user', 'admin'], true);
+        } elseif ($authUser->role === 'admin') {
+            $allowed = $user->role === 'user';
+        }
+        if (!$allowed) {
+            abort(403);
+        }
+
+        if ($user->avatar_path) {
+            Storage::disk('public')->delete($user->avatar_path);
+        }
+
+        $user->delete();
+
+        return redirect()->route('admin.users.index');
     }
 
     public function updateTicket(Request $request, User $user, Ticket $ticket)

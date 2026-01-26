@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -27,12 +28,15 @@ class User extends Authenticatable implements JWTSubject
         'id',
         'name',
         'last_name',
+        'nickname',
+        'avatar_path',
         'email',
         'phone',
         'telegram_id',
         'telegram_username',
         'password',
         'role',
+        'is_active',
         'email_verified_at',
         'birth_date',
         'gender',
@@ -75,8 +79,13 @@ class User extends Authenticatable implements JWTSubject
             'terms_accepted_at' => 'datetime',
             'last_login_at' => 'datetime',
             'birth_date' => 'date',
+            'is_active' => 'boolean',
         ];
     }
+
+    protected $appends = [
+        'avatar_url',
+    ];
 
     protected static function boot()
     {
@@ -109,5 +118,19 @@ class User extends Authenticatable implements JWTSubject
             'role' => $this->role,
             'name' => $this->name
         ];
+    }
+
+    public function getAvatarUrlAttribute()
+    {
+        if (!$this->avatar_path) {
+            return null;
+        }
+
+        return Storage::disk('public')->url($this->avatar_path);
+    }
+
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new \App\Notifications\ResetPasswordNotification($token));
     }
 }

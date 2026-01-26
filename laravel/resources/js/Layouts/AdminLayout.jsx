@@ -18,7 +18,7 @@ export default function AdminLayout({
     { key: 'ecommerce', label: 'Ecommerce', href: route('admin.ecommerce.index') },
     { key: 'marketing', label: 'Marketing', href: route('admin.marketing.index') },
     { key: 'users', label: 'Users', href: route('admin.users.index') },
-    { key: 'settings', label: 'Settings', href: route('admin.settings') },
+    { key: 'settings', label: 'Settings', href: route('profile.edit') },
   ];
 
   return (

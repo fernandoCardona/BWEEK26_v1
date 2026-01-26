@@ -5,11 +5,24 @@ import { Link, router, useForm, usePage } from '@inertiajs/react';
 export default function Index({ users, filters, selectedUser, selectedTickets, selectedStats, can }) {
     const { props } = usePage();
     const authRole = props?.auth?.user?.role;
+    const authUserId = props?.auth?.user?.id;
     const [q, setQ] = useState(filters?.q ?? '');
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [createOpen, setCreateOpen] = useState(false);
 
     useEffect(() => {
         setQ(filters?.q ?? '');
     }, [filters?.q]);
+
+    useEffect(() => {
+        const t = setTimeout(() => {
+            const current = filters?.q ?? '';
+            if (q === current) return;
+            const target = selectedUser ? route('admin.users.show', selectedUser.id) : route('admin.users.index');
+            router.get(target, q ? { q } : {}, { preserveState: true, replace: true });
+        }, 300);
+        return () => clearTimeout(t);
+    }, [q]);
 
     const selectedId = selectedUser?.id;
     const usersData = users?.data ?? [];
@@ -17,6 +30,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
     const profileForm = useForm({
         name: selectedUser?.name ?? '',
         last_name: selectedUser?.last_name ?? '',
+        nickname: selectedUser?.nickname ?? '',
         birth_date: selectedUser?.birth_date ?? '',
         gender: selectedUser?.gender ?? 'prefer_not_say',
         email: selectedUser?.email ?? '',
@@ -27,6 +41,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
         postal_code: selectedUser?.postal_code ?? '',
         country: selectedUser?.country ?? '',
         no_newsletter: selectedUser ? !(selectedUser.newsletter_subscribed ?? true) : false,
+        avatar: null,
     });
 
     const roleForm = useForm({
@@ -37,6 +52,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
         profileForm.setData({
             name: selectedUser?.name ?? '',
             last_name: selectedUser?.last_name ?? '',
+            nickname: selectedUser?.nickname ?? '',
             birth_date: selectedUser?.birth_date ?? '',
             gender: selectedUser?.gender ?? 'prefer_not_say',
             email: selectedUser?.email ?? '',
@@ -47,6 +63,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
             postal_code: selectedUser?.postal_code ?? '',
             country: selectedUser?.country ?? '',
             no_newsletter: selectedUser ? !(selectedUser.newsletter_subscribed ?? true) : false,
+            avatar: null,
         });
         roleForm.setData('role', selectedUser?.role ?? 'user');
         profileForm.clearErrors();
@@ -55,13 +72,14 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
 
     const submitSearch = (e) => {
         e.preventDefault();
-        router.get(route('admin.users.index'), q ? { q } : {}, { preserveState: true, replace: true });
+        const target = selectedUser ? route('admin.users.show', selectedUser.id) : route('admin.users.index');
+        router.get(target, q ? { q } : {}, { preserveState: true, replace: true });
     };
 
     const submitUpdateUser = (e) => {
         e.preventDefault();
         if (!selectedUser) return;
-        profileForm.patch(route('admin.users.update', selectedUser.id), { preserveScroll: true });
+        profileForm.patch(route('admin.users.update', selectedUser.id), { preserveScroll: true, forceFormData: true });
     };
 
     const submitUpdateRole = (e) => {
@@ -85,6 +103,34 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
         router.delete(route('admin.users.tickets.destroy', [selectedUser.id, ticketId]), { preserveScroll: true });
     };
 
+    const toggleUserActive = (userId) => {
+        router.patch(route('admin.users.active', userId), {}, { preserveScroll: true });
+    };
+
+    const deleteUser = (userId) => {
+        router.delete(route('admin.users.destroy', userId), { preserveScroll: true, onFinish: () => setDeleteTarget(null) });
+    };
+
+    const createForm = useForm({
+        name: '',
+        last_name: '',
+        nickname: '',
+        email: '',
+        phone: '',
+        role: 'user',
+    });
+
+    const submitCreate = (e) => {
+        e.preventDefault();
+        createForm.post(route('admin.users.store'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setCreateOpen(false);
+                createForm.reset();
+            },
+        });
+    };
+
     const stats = selectedStats ?? null;
     const tickets = selectedTickets ?? [];
 
@@ -101,7 +147,14 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                     <div className="glass-card p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-bold">Usuarios</h2>
-                            <span className="text-xs text-gray-500">{usersData.length} en página</span>
+                            <div className="flex items-center gap-3">
+                                {authRole === 'super_admin' && (
+                                    <button className="btn-primary px-4 py-2 text-xs" type="button" onClick={() => setCreateOpen(true)}>
+                                        Crear usuario
+                                    </button>
+                                )}
+                                <span className="text-xs text-gray-500">{usersData.length} en página</span>
+                            </div>
                         </div>
 
                         <form onSubmit={submitSearch} className="flex gap-2 mb-4">
@@ -117,25 +170,44 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                         <div className="space-y-2">
                             {usersData.map((u) => {
                                 const isActive = u.id === selectedId;
+                                const canManage =
+                                    u.id !== authUserId &&
+                                    ((authRole === 'super_admin' && u.role !== 'super_admin') || (authRole === 'admin' && u.role === 'user'));
                                 return (
-                                    <Link
+                                    <div
                                         key={u.id}
-                                        href={route('admin.users.show', u.id, filters?.q ? { q: filters.q } : {})}
-                                        className={`block rounded-2xl border px-4 py-3 transition-all ${
+                                        className={`rounded-2xl border px-4 py-3 transition-all ${
                                             isActive ? 'border-accent-primary/40 bg-white/5' : 'border-white/10 hover:bg-white/5'
                                         }`}
                                     >
-                                        <div className="flex items-center justify-between gap-3">
-                                            <div className="min-w-0">
-                                                <p className="font-bold text-sm truncate">
-                                                    {[u.name, u.last_name].filter(Boolean).join(' ') || u.email}
-                                                </p>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <Link href={route('admin.users.show', u.id, filters?.q ? { q: filters.q } : {})} className="min-w-0 flex-1">
+                                                <p className="font-bold text-sm truncate">{[u.name, u.last_name].filter(Boolean).join(' ') || u.email}</p>
                                                 <p className="text-xs text-gray-500 truncate">{u.email}</p>
+                                                <div className="flex items-center gap-3 mt-1">
+                                                    <span className="text-xs text-gray-500 truncate">{u.phone || '-'}</span>
+                                                    <span className="text-[10px] uppercase tracking-widest text-gray-500">{u.role}</span>
+                                                </div>
+                                            </Link>
+                                            <div className="flex flex-col items-end gap-2">
+                                                <label className="flex items-center gap-2 text-xs text-gray-400 select-none">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={!!u.is_active}
+                                                        disabled={!canManage}
+                                                        onChange={() => toggleUserActive(u.id)}
+                                                        className="rounded border-white/20 bg-white/5"
+                                                    />
+                                                    {u.is_active ? 'Activo' : 'Desactivado'}
+                                                </label>
+                                                {canManage && (
+                                                    <button type="button" className="text-xs text-red-300 hover:text-red-200" onClick={() => setDeleteTarget(u)}>
+                                                        Eliminar
+                                                    </button>
+                                                )}
                                             </div>
-                                            <span className="text-[10px] uppercase tracking-widest text-gray-500">{u.role}</span>
                                         </div>
-                                        {u.phone && <p className="text-xs text-gray-500 mt-1">{u.phone}</p>}
-                                    </Link>
+                                    </div>
                                 );
                             })}
                             {!usersData.length && <p className="text-sm text-gray-400">No hay resultados con ese filtro.</p>}
@@ -204,10 +276,30 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                             <div className="glass-card p-6">
                                 <h3 className="text-xl font-bold mb-6">Datos del usuario</h3>
                                 <form onSubmit={submitUpdateUser} className="space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Imagen (opcional)</label>
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-16 h-16 rounded-2xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
+                                                {selectedUser.avatar_url ? (
+                                                    <img src={selectedUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs text-gray-500">Sin</span>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm"
+                                                onChange={(e) => profileForm.setData('avatar', e.target.files?.[0] ?? null)}
+                                            />
+                                        </div>
+                                        {profileForm.errors.avatar && <div className="text-xs text-red-400 mt-1">{profileForm.errors.avatar}</div>}
+                                    </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Field label="Nombre" value={profileForm.data.name} onChange={(e) => profileForm.setData('name', e.target.value)} error={profileForm.errors.name} />
                                         <Field label="Apellidos" value={profileForm.data.last_name} onChange={(e) => profileForm.setData('last_name', e.target.value)} error={profileForm.errors.last_name} />
                                     </div>
+                                    <Field label="Nickname (opcional)" value={profileForm.data.nickname} onChange={(e) => profileForm.setData('nickname', e.target.value)} error={profileForm.errors.nickname} />
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Field label="Fecha de nacimiento" type="date" value={profileForm.data.birth_date} onChange={(e) => profileForm.setData('birth_date', e.target.value)} error={profileForm.errors.birth_date} />
                                         <SelectField
@@ -241,7 +333,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                             checked={profileForm.data.no_newsletter}
                                             onChange={(e) => profileForm.setData('no_newsletter', e.target.checked)}
                                         />
-                                        No recibir newsletter
+                                        No quiero recibir newsletter
                                     </label>
                                     <button className="btn-primary px-6 py-3 text-sm" disabled={profileForm.processing}>
                                         Guardar cambios
@@ -295,6 +387,63 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                     )}
                 </div>
             </div>
+            {createOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+                    <div className="glass-card max-w-lg w-full p-6 border border-white/10">
+                        <h3 className="text-2xl font-black tracking-tight mb-2">Crear usuario</h3>
+                        <p className="text-gray-400 mb-6">Se creará la cuenta y se enviará un email para definir la contraseña.</p>
+                        <form onSubmit={submitCreate} className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Field label="Nombre" value={createForm.data.name} onChange={(e) => createForm.setData('name', e.target.value)} error={createForm.errors.name} />
+                                <Field label="Apellidos" value={createForm.data.last_name} onChange={(e) => createForm.setData('last_name', e.target.value)} error={createForm.errors.last_name} />
+                            </div>
+                            <Field label="Nickname (opcional)" value={createForm.data.nickname} onChange={(e) => createForm.setData('nickname', e.target.value)} error={createForm.errors.nickname} />
+                            <Field label="Email" type="email" value={createForm.data.email} onChange={(e) => createForm.setData('email', e.target.value)} error={createForm.errors.email} />
+                            <Field label="Móvil" value={createForm.data.phone} onChange={(e) => createForm.setData('phone', e.target.value)} error={createForm.errors.phone} />
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Rol</label>
+                                <select
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                    value={createForm.data.role}
+                                    onChange={(e) => createForm.setData('role', e.target.value)}
+                                >
+                                    <option value="user">user</option>
+                                    <option value="admin">admin</option>
+                                    <option value="super_admin">super_admin</option>
+                                </select>
+                                {createForm.errors.role && <div className="text-xs text-red-400 mt-1">{createForm.errors.role}</div>}
+                            </div>
+                            <div className="flex items-center justify-end gap-3 pt-2">
+                                <button type="button" className="btn-secondary px-6 py-3 text-sm" onClick={() => setCreateOpen(false)}>
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={createForm.processing}>
+                                    Crear
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {deleteTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+                    <div className="glass-card max-w-lg w-full p-6 border border-white/10">
+                        <h3 className="text-2xl font-black tracking-tight mb-2">Eliminar usuario</h3>
+                        <p className="text-gray-400 mb-6">
+                            ¿Seguro que quieres eliminar a{' '}
+                            <span className="text-white font-bold">{[deleteTarget.name, deleteTarget.last_name].filter(Boolean).join(' ') || deleteTarget.email}</span>?
+                        </p>
+                        <div className="flex items-center justify-end gap-3">
+                            <button type="button" className="btn-secondary px-6 py-3 text-sm" onClick={() => setDeleteTarget(null)}>
+                                Cancelar
+                            </button>
+                            <button type="button" className="btn-primary px-6 py-3 text-sm" onClick={() => deleteUser(deleteTarget.id)}>
+                                Sí, eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </AdminLayout>
     );
 }

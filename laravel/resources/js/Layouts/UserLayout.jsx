@@ -1,5 +1,5 @@
 import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import Layout from '@/Layouts/Layout';
 import { motion as m } from 'framer-motion';
 
@@ -10,6 +10,9 @@ export default function UserLayout({
     headTitle = 'Mi cuenta',
     children,
 }) {
+    const { props } = usePage();
+    const user = props?.auth?.user;
+    const displayName = user?.nickname || title;
     const tabs = [
         { key: 'overview', label: 'Overview', href: route('user.dashboard') },
         { key: 'store', label: 'Store', href: route('user.store') },
@@ -28,12 +31,7 @@ export default function UserLayout({
                     >
                         <div>
                             <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 uppercase">
-                                {title.split(' ').map((word, i) => (
-                                    <span key={`${word}-${i}`} className={i === 1 ? 'text-gradient' : ''}>
-                                        {i > 0 ? ' ' : ''}
-                                        {word}
-                                    </span>
-                                ))}
+                                <span className="text-gradient">{displayName}</span>
                             </h1>
                             <p className="text-gray-400 font-medium">{subtitle}</p>
                         </div>
@@ -59,4 +57,3 @@ export default function UserLayout({
         </Layout>
     );
 }
-
