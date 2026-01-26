@@ -283,9 +283,13 @@ export default function Navigation() {
                             <Link href={route('cart.index')} className="icon-btn" aria-label="Carrito">
                                 <FiShoppingCart size={20} />
                             </Link>
-                            <div className="icon-btn">
-                                <FiUser size={20} />
-                            </div>
+                            <Link href={route('dashboard')} className="icon-btn" aria-label="Dashboard">
+                                {props.auth?.user?.avatar_url ? (
+                                    <img src={props.auth.user.avatar_url} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
+                                ) : (
+                                    <FiUser size={20} />
+                                )}
+                            </Link>
                             <Link href={route('logout')} method="post" as="button" className="icon-btn" aria-label="Logout">
                                 <FiLogOut size={20} />
                             </Link>
@@ -334,10 +338,10 @@ export default function Navigation() {
                         <Link href="/about/bears-solidarios" className="block text-gray-400 hover:text-white">Bears solidarios</Link>
                         <Link href="/about/galeria" className="block text-gray-400 hover:text-white">Galeria</Link>
                     </div>
-                    <Link href="/events" className="block text-2xl font-bold tracking-tight">Events</Link>
+                    <Link href="/program" className="block text-2xl font-bold tracking-tight">Events</Link>
                     <div className="pl-4 space-y-2">
-                        <Link href="/events/bears-sitges-meeting" className="block text-gray-400 hover:text-white">Bears Sitges Meeting</Link>
-                        <Link href="/events/bears-sitges-week" className="block text-gray-400 hover:text-white">Bears Sitges Week</Link>
+                        <Link href="/program/bears-sitges-meeting" className="block text-gray-400 hover:text-white">Bears Sitges Meeting</Link>
+                        <Link href="/program/bears-sitges-week" className="block text-gray-400 hover:text-white">Bears Sitges Week</Link>
                     </div>
                     <Link href="/magazine/noticias" className="block text-2xl font-bold tracking-tight">Magazine</Link>
                     <Link href="/shop" className="block text-2xl font-bold tracking-tight">Store</Link>
@@ -354,7 +358,17 @@ export default function Navigation() {
                     </div>
                     <div className="pt-6">
                         {props.auth?.user ? (
-                            <Link href={route('logout')} method="post" as="button" className="btn-secondary w-full py-3">Salir</Link>
+                            <div className="space-y-3">
+                                <Link href={route('cart.index')} className="btn-secondary w-full py-3 text-center">
+                                    Carrito
+                                </Link>
+                                <Link href={route('dashboard')} className="btn-secondary w-full py-3 text-center">
+                                    Dashboard
+                                </Link>
+                                <Link href={route('logout')} method="post" as="button" className="btn-secondary w-full py-3">
+                                    Salir
+                                </Link>
+                            </div>
                         ) : (
                             <button
                                 onClick={() => {

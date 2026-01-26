@@ -9,9 +9,24 @@ use App\Models\Transaction;
 use App\Models\TransactionItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class CartController extends Controller
 {
+    public function page(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(401);
+        }
+
+        $cart = Cart::query()->firstOrCreate(['user_id' => $user->id], ['currency' => 'EUR']);
+
+        return Inertia::render('Cart/Index', [
+            'cart' => $this->toPayload($cart),
+        ]);
+    }
+
     public function show(Request $request)
     {
         $user = $request->user();
@@ -207,4 +222,3 @@ class CartController extends Controller
         ];
     }
 }
-

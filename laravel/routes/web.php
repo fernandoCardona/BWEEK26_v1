@@ -66,7 +66,8 @@ Route::middleware('auth')->group(function () {
 
 
 Route::middleware('auth')->group(function () {
-    Route::get('/cart', [CartController::class, 'show'])->name('cart.index');
+    Route::get('/cart', [CartController::class, 'page'])->name('cart.index');
+    Route::get('/cart/data', [CartController::class, 'show'])->name('cart.data');
     Route::post('/cart/items', [CartController::class, 'addItem'])->name('cart.items.add');
     Route::patch('/cart/items/{item}', [CartController::class, 'updateItem'])->name('cart.items.update');
     Route::delete('/cart/items/{item}', [CartController::class, 'removeItem'])->name('cart.items.remove');

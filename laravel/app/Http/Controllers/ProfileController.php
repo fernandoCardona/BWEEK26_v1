@@ -42,7 +42,7 @@ class ProfileController extends Controller
             'name' => $data['name'],
             'last_name' => $data['last_name'] ?? null,
             'nickname' => $data['nickname'] ?? null,
-            'birth_date' => $data['birth_date'] ?? null,
+            'birth_date' => ($data['birth_date'] ?? null) ?: null,
             'gender' => $data['gender'] ?? null,
             'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
