@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -20,7 +21,8 @@ class UsersController extends Controller
         $q = $request->string('q');
 
         $users = User::query()
-            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'is_active', 'created_at'])
+            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'created_at'])
+            ->addSelect(DB::raw('coalesce(is_active, true) as is_active'))
             ->when($q->isNotEmpty(), function ($query) use ($q) {
                 $term = '%' . $q->toString() . '%';
                 $query->where(function ($sub) use ($term) {
@@ -54,7 +56,8 @@ class UsersController extends Controller
         $q = $request->string('q');
 
         $users = User::query()
-            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'is_active', 'created_at'])
+            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'created_at'])
+            ->addSelect(DB::raw('coalesce(is_active, true) as is_active'))
             ->when($q->isNotEmpty(), function ($query) use ($q) {
                 $term = '%' . $q->toString() . '%';
                 $query->where(function ($sub) use ($term) {
@@ -110,7 +113,7 @@ class UsersController extends Controller
                 'email' => $user->email,
                 'phone' => $user->phone,
                 'role' => $user->role,
-                'is_active' => (bool) $user->is_active,
+                'is_active' => (bool) ($user->is_active ?? true),
                 'birth_date' => optional($user->birth_date)->format('Y-m-d'),
                 'gender' => $user->gender,
                 'address_line1' => $user->address_line1,

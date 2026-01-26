@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
+import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 
 export default function Index({ users, filters, selectedUser, selectedTickets, selectedStats, can }) {
     const { props } = usePage();
@@ -9,6 +10,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
     const [q, setQ] = useState(filters?.q ?? '');
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [createOpen, setCreateOpen] = useState(false);
+    useLockBodyScroll(createOpen || !!deleteTarget);
 
     useEffect(() => {
         setQ(filters?.q ?? '');
@@ -140,21 +142,24 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
         return full || selectedUser.email;
     }, [selectedId]);
 
+    const canManageSelected =
+        !!selectedUser &&
+        selectedUser.id !== authUserId &&
+        ((authRole === 'super_admin' && selectedUser.role !== 'super_admin') || (authRole === 'admin' && selectedUser.role === 'user'));
+
     return (
         <AdminLayout active="users" headTitle="Admin • Users">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                 <div className="lg:col-span-4">
+                    {authRole === 'super_admin' && (
+                        <button className="btn-primary w-full py-3 text-sm mb-4" type="button" onClick={() => setCreateOpen(true)}>
+                            Crear usuario
+                        </button>
+                    )}
                     <div className="glass-card p-6">
                         <div className="flex items-center justify-between mb-4">
                             <h2 className="text-xl font-bold">Usuarios</h2>
-                            <div className="flex items-center gap-3">
-                                {authRole === 'super_admin' && (
-                                    <button className="btn-primary px-4 py-2 text-xs" type="button" onClick={() => setCreateOpen(true)}>
-                                        Crear usuario
-                                    </button>
-                                )}
-                                <span className="text-xs text-gray-500">{usersData.length} en página</span>
-                            </div>
+                            <span className="text-xs text-gray-500">{usersData.length} en página</span>
                         </div>
 
                         <form onSubmit={submitSearch} className="flex gap-2 mb-4">
@@ -170,44 +175,25 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                         <div className="space-y-2">
                             {usersData.map((u) => {
                                 const isActive = u.id === selectedId;
-                                const canManage =
-                                    u.id !== authUserId &&
-                                    ((authRole === 'super_admin' && u.role !== 'super_admin') || (authRole === 'admin' && u.role === 'user'));
+                                const displayName = [u.name, u.last_name].filter(Boolean).join(' ') || u.email;
                                 return (
-                                    <div
+                                    <Link
                                         key={u.id}
-                                        className={`rounded-2xl border px-4 py-3 transition-all ${
+                                        href={route('admin.users.show', u.id, filters?.q ? { q: filters.q } : {})}
+                                        className={`block rounded-2xl border px-4 py-3 transition-all ${
                                             isActive ? 'border-accent-primary/40 bg-white/5' : 'border-white/10 hover:bg-white/5'
                                         }`}
                                     >
                                         <div className="flex items-start justify-between gap-3">
-                                            <Link href={route('admin.users.show', u.id, filters?.q ? { q: filters.q } : {})} className="min-w-0 flex-1">
-                                                <p className="font-bold text-sm truncate">{[u.name, u.last_name].filter(Boolean).join(' ') || u.email}</p>
+                                            <div className="min-w-0">
+                                                <p className="font-bold text-sm truncate">{displayName}</p>
                                                 <p className="text-xs text-gray-500 truncate">{u.email}</p>
-                                                <div className="flex items-center gap-3 mt-1">
-                                                    <span className="text-xs text-gray-500 truncate">{u.phone || '-'}</span>
-                                                    <span className="text-[10px] uppercase tracking-widest text-gray-500">{u.role}</span>
-                                                </div>
-                                            </Link>
-                                            <div className="flex flex-col items-end gap-2">
-                                                <label className="flex items-center gap-2 text-xs text-gray-400 select-none">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={!!u.is_active}
-                                                        disabled={!canManage}
-                                                        onChange={() => toggleUserActive(u.id)}
-                                                        className="rounded border-white/20 bg-white/5"
-                                                    />
-                                                    {u.is_active ? 'Activo' : 'Desactivado'}
-                                                </label>
-                                                {canManage && (
-                                                    <button type="button" className="text-xs text-red-300 hover:text-red-200" onClick={() => setDeleteTarget(u)}>
-                                                        Eliminar
-                                                    </button>
-                                                )}
                                             </div>
+                                            <span className="shrink-0 text-[10px] uppercase tracking-widest text-accent-primary bg-accent-primary/10 border border-accent-primary/20 rounded-lg px-2 py-1">
+                                                {u.role}
+                                            </span>
                                         </div>
-                                    </div>
+                                    </Link>
                                 );
                             })}
                             {!usersData.length && <p className="text-sm text-gray-400">No hay resultados con ese filtro.</p>}
@@ -233,10 +219,22 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                             {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleString() : '-'}
                                         </p>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <button onClick={sendReset} className="btn-secondary px-4 py-3 text-sm">
-                                            Enviar reset password
-                                        </button>
+                                    <div className="flex flex-wrap items-center gap-4">
+                                        {canManageSelected && (
+                                            <label className="inline-flex items-center gap-3 text-sm text-gray-300 select-none">
+                                                <span className="text-xs text-gray-400">{selectedUser.is_active ? 'Activo' : 'Desactivado'}</span>
+                                                <span className="relative inline-flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="sr-only peer"
+                                                        checked={!!selectedUser.is_active}
+                                                        onChange={() => toggleUserActive(selectedUser.id)}
+                                                    />
+                                                    <span className="w-11 h-6 bg-white/10 border border-white/10 rounded-full peer peer-checked:bg-accent-primary/60 peer-checked:border-accent-primary/40 transition-colors" />
+                                                    <span className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5" />
+                                                </span>
+                                            </label>
+                                        )}
                                     </div>
                                 </div>
 
@@ -383,13 +381,39 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                     Cuando añadamos Orders/OrderItems, esta sección mostrará el historial y permitirá gestionar estado/eliminar.
                                 </p>
                             </div>
+
+                            <div className="glass-card p-6">
+                                <h3 className="text-xl font-bold mb-2">Reset password</h3>
+                                <p className="text-gray-400 mb-6">
+                                    Esta acción enviará un email al usuario con un enlace seguro para cambiar su contraseña. El usuario podrá acceder al enlace y definir una nueva contraseña.
+                                </p>
+                                <button onClick={sendReset} className="btn-secondary px-6 py-3 text-sm">
+                                    Enviar reset password
+                                </button>
+                            </div>
+
+                            {canManageSelected && (
+                                <div className="glass-card p-6">
+                                    <h3 className="text-xl font-bold mb-2">Eliminar usuario</h3>
+                                    <p className="text-gray-400 mb-6">
+                                        Esta acción es permanente. Al eliminar el usuario se perderá su acceso y sus datos asociados (incluyendo tickets y compras si aplican).
+                                    </p>
+                                    <button
+                                        type="button"
+                                        className="w-full px-6 py-3 text-sm rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-colors"
+                                        onClick={() => setDeleteTarget(selectedUser)}
+                                    >
+                                        Eliminar usuario
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
             </div>
             {createOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
-                    <div className="glass-card max-w-lg w-full p-6 border border-white/10">
+                    <div className="glass-card max-w-lg w-full p-6 border border-white/10 bg-white/10 shadow-2xl shadow-black/60">
                         <h3 className="text-2xl font-black tracking-tight mb-2">Crear usuario</h3>
                         <p className="text-gray-400 mb-6">Se creará la cuenta y se enviará un email para definir la contraseña.</p>
                         <form onSubmit={submitCreate} className="space-y-4">
@@ -427,7 +451,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
             )}
             {deleteTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
-                    <div className="glass-card max-w-lg w-full p-6 border border-white/10">
+                    <div className="glass-card max-w-lg w-full p-6 border border-white/10 bg-white/10 shadow-2xl shadow-black/60">
                         <h3 className="text-2xl font-black tracking-tight mb-2">Eliminar usuario</h3>
                         <p className="text-gray-400 mb-6">
                             ¿Seguro que quieres eliminar a{' '}
@@ -437,7 +461,11 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                             <button type="button" className="btn-secondary px-6 py-3 text-sm" onClick={() => setDeleteTarget(null)}>
                                 Cancelar
                             </button>
-                            <button type="button" className="btn-primary px-6 py-3 text-sm" onClick={() => deleteUser(deleteTarget.id)}>
+                            <button
+                                type="button"
+                                className="px-6 py-3 text-sm rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-colors"
+                                onClick={() => deleteUser(deleteTarget.id)}
+                            >
                                 Sí, eliminar
                             </button>
                         </div>

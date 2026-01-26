@@ -3,6 +3,7 @@ import { Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { FiLogOut, FiShoppingCart, FiUser, FiX } from 'react-icons/fi';
+import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 
 export default function Navigation() {
     const { url, props } = usePage();
@@ -21,6 +22,8 @@ export default function Navigation() {
         recomendations: [],
         store: [],
     });
+
+    useLockBodyScroll(loginOpen);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -45,6 +48,11 @@ export default function Navigation() {
         remember: false,
     });
 
+    const [forgotSent, setForgotSent] = useState(false);
+    const forgotForm = useForm({
+        email: '',
+    });
+
     const [registerStep, setRegisterStep] = useState('request');
 
     const registerRequestForm = useForm({
@@ -63,10 +71,13 @@ export default function Navigation() {
         setLoginOpen(false);
         setAuthMode('login');
         setRegisterStep('request');
+        setForgotSent(false);
         loginForm.reset('password');
+        forgotForm.reset();
         registerRequestForm.reset('password', 'password_confirmation');
         registerVerifyForm.reset('verification_code');
         loginForm.clearErrors();
+        forgotForm.clearErrors();
         registerRequestForm.clearErrors();
         registerVerifyForm.clearErrors();
     };
@@ -87,6 +98,14 @@ export default function Navigation() {
         loginForm.post(route('login'), {
             onSuccess: () => closeAuthModal(),
             onFinish: () => loginForm.reset('password'),
+        });
+    };
+
+    const submitForgot = (e) => {
+        e.preventDefault();
+        setForgotSent(false);
+        forgotForm.post(route('password.email'), {
+            onSuccess: () => setForgotSent(true),
         });
     };
 
@@ -357,7 +376,10 @@ export default function Navigation() {
                     className="fixed inset-0 z-[100] flex min-h-screen items-center justify-center bg-black/70 backdrop-blur-sm p-6"
                     onClick={closeAuthModal}
                 >
-                    <div className="relative glass-card p-8 w-full max-w-md border border-white/10" onClick={(e) => e.stopPropagation()}>
+                    <div
+                        className="relative glass-card p-8 w-full max-w-md border border-white/10 bg-white/10 shadow-2xl shadow-black/60"
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <button onClick={closeAuthModal} className="absolute top-4 right-4 text-gray-400 hover:text-white" aria-label="Cerrar">
                             <FiX size={20} />
                         </button>
@@ -460,6 +482,46 @@ export default function Navigation() {
                                     </form>
                                 )}
                             </>
+                        ) : authMode === 'forgot' ? (
+                            <>
+                                <div className="relative flex items-center justify-between mb-4">
+                                    <h2 className="text-2xl font-black tracking-tight">Recuperar contraseña</h2>
+                                </div>
+                                {forgotSent ? (
+                                    <div className="space-y-4">
+                                        <p className="text-sm text-gray-400">
+                                            Si el email existe, te hemos enviado un enlace para cambiar tu contraseña.
+                                        </p>
+                                        <button type="button" className="btn-secondary w-full py-3 text-sm" onClick={() => setAuthMode('login')}>
+                                            Volver a acceder
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={submitForgot} className="space-y-4">
+                                        <p className="text-sm text-gray-400">
+                                            Introduce tu email y te enviaremos un enlace seguro para restablecer la contraseña.
+                                        </p>
+                                        <div>
+                                            <input
+                                                type="email"
+                                                placeholder="Email"
+                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                                value={forgotForm.data.email}
+                                                onChange={(e) => forgotForm.setData('email', e.target.value)}
+                                            />
+                                            {forgotForm.errors.email && <div className="text-xs text-red-400 mt-1">{forgotForm.errors.email}</div>}
+                                        </div>
+                                        <div className="flex items-center justify-between mt-2">
+                                            <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={forgotForm.processing}>
+                                                Enviar enlace
+                                            </button>
+                                            <button type="button" className="btn-secondary px-6 py-3 text-sm" onClick={() => setAuthMode('login')}>
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                            </>
                         ) : (
                             <>
                                 <div className="relative flex items-center justify-between mb-4">
@@ -496,6 +558,17 @@ export default function Navigation() {
                                             />
                                             Recordarme
                                         </label>
+                                        <button
+                                            type="button"
+                                            className="text-sm text-gray-300 hover:text-white"
+                                            onClick={() => {
+                                                forgotForm.setData('email', loginForm.data.email);
+                                                setForgotSent(false);
+                                                setAuthMode('forgot');
+                                            }}
+                                        >
+                                            ¿Olvidaste tu contraseña?
+                                        </button>
                                     </div>
                                     <div className="flex items-center justify-between mt-2">
                                         <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={loginForm.processing}>Entrar</button>
@@ -504,6 +577,7 @@ export default function Navigation() {
                                             onClick={() => {
                                                 loginForm.reset('password');
                                                 loginForm.clearErrors();
+                                                setForgotSent(false);
                                                 setAuthMode('register');
                                             }}
                                             className="btn-secondary px-6 py-3 text-sm"
