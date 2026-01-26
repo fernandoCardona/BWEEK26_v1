@@ -18,8 +18,10 @@ class Product extends Model
         'name',
         'description',
         'price',
+        'stock',
         'category',
         'is_active',
+        'image_path',
     ];
 
     public $translatable = ['name', 'description'];
@@ -27,6 +29,7 @@ class Product extends Model
     protected $casts = [
         'id' => 'string',
         'price' => 'decimal:2',
+        'stock' => 'integer',
         'is_active' => 'boolean',
     ];
 

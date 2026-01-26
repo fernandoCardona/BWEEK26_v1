@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\EventTicketType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -56,6 +57,7 @@ class EventsController extends Controller
 
     public function edit(Request $request, Event $event)
     {
+        $event->load(['ticketTypes']);
         $parents = Event::query()
             ->whereNull('parent_event_id')
             ->where('id', '!=', $event->id)
@@ -69,6 +71,7 @@ class EventsController extends Controller
             'can' => [
                 'delete' => $request->user()?->role === 'super_admin',
                 'toggle_active' => $request->user()?->role === 'super_admin',
+                'manage_ticket_types' => $request->user()?->role === 'super_admin',
             ],
         ]);
     }
@@ -120,6 +123,39 @@ class EventsController extends Controller
         $event->delete();
 
         return redirect()->route('admin.events.index');
+    }
+
+    public function upsertTicketType(Request $request, Event $event)
+    {
+        $data = $request->validate([
+            'code' => ['required', 'string', Rule::in(['vip', 'standard'])],
+            'price' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+
+        EventTicketType::query()->updateOrCreate(
+            [
+                'event_id' => $event->id,
+                'code' => $data['code'],
+            ],
+            [
+                'price' => $data['price'],
+                'stock' => $data['stock'],
+                'is_active' => (bool) ($data['is_active'] ?? true),
+            ]
+        );
+
+        return back();
+    }
+
+    public function destroyTicketType(Request $request, Event $event, EventTicketType $ticketType)
+    {
+        if ($ticketType->event_id !== $event->id) {
+            abort(404);
+        }
+        $ticketType->delete();
+        return back();
     }
 
     private function validateEvent(Request $request, ?Event $event = null): array
@@ -202,10 +238,20 @@ class EventsController extends Controller
             'banner_url' => $event->banner_path ? Storage::disk('public')->url($event->banner_path) : null,
             'logo_url' => $event->logo_path ? Storage::disk('public')->url($event->logo_path) : null,
             'flyer_url' => $event->flyer_path ? Storage::disk('public')->url($event->flyer_path) : null,
+            'ticket_types' => $event->relationLoaded('ticketTypes')
+                ? $event->ticketTypes->sortBy('code')->values()->map(function (EventTicketType $t) {
+                    return [
+                        'id' => $t->id,
+                        'code' => $t->code,
+                        'price' => (string) $t->price,
+                        'stock' => (int) $t->stock,
+                        'is_active' => (bool) $t->is_active,
+                    ];
+                })
+                : [],
             'subevents' => $includeSubevents
                 ? $event->subevents->sortBy('start_at')->map(fn (Event $s) => $this->mapEvent($s, false))->values()
                 : [],
         ];
     }
 }
-

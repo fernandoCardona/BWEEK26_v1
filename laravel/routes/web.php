@@ -6,7 +6,9 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\PagesController as AdminPagesController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\EventsController as AdminEventsController;
+use App\Http\Controllers\Admin\ProductsController as AdminProductsController;
 use App\Http\Controllers\ChatbotWebController;
+use App\Http\Controllers\CartController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\Admin\UsersController as AdminUsersController;
 use App\Http\Middleware\EnsureAdmin;
@@ -17,10 +19,6 @@ use App\Http\Controllers\WebsiteMenuController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PageController::class, 'home'])->name('home');
-
-Route::get('/cart', function () {
-    return response()->json(['status' => 'ok']);
-})->name('cart.index');
 
 Route::get('/get_token', function () {
     return response()->json(['token' => csrf_token()]);
@@ -68,6 +66,12 @@ Route::middleware('auth')->group(function () {
 
 
 Route::middleware('auth')->group(function () {
+    Route::get('/cart', [CartController::class, 'show'])->name('cart.index');
+    Route::post('/cart/items', [CartController::class, 'addItem'])->name('cart.items.add');
+    Route::patch('/cart/items/{item}', [CartController::class, 'updateItem'])->name('cart.items.update');
+    Route::delete('/cart/items/{item}', [CartController::class, 'removeItem'])->name('cart.items.remove');
+    Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/send-password-reset', [ProfileController::class, 'sendPasswordReset'])->name('profile.password.reset');
@@ -92,14 +96,22 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     Route::get('/ecommerce', function () {
         return redirect()->route('admin.dashboard');
     })->name('admin.ecommerce.index');
+    Route::get('/products', [AdminProductsController::class, 'index'])->name('admin.products.index');
     Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events.index');
-    Route::get('/events/{event}', [AdminEventsController::class, 'edit'])->name('admin.events.edit');
-    Route::patch('/events/{event}', [AdminEventsController::class, 'update'])->name('admin.events.update');
     Route::middleware([EnsureSuperAdmin::class])->group(function () {
         Route::get('/events/create', [AdminEventsController::class, 'create'])->name('admin.events.create');
         Route::post('/events', [AdminEventsController::class, 'store'])->name('admin.events.store');
         Route::delete('/events/{event}', [AdminEventsController::class, 'destroy'])->name('admin.events.destroy');
+        Route::post('/events/{event}/ticket-types', [AdminEventsController::class, 'upsertTicketType'])->name('admin.events.ticket-types.upsert');
+        Route::delete('/events/{event}/ticket-types/{ticketType}', [AdminEventsController::class, 'destroyTicketType'])->name('admin.events.ticket-types.destroy');
+        Route::get('/products/create', [AdminProductsController::class, 'create'])->name('admin.products.create');
+        Route::post('/products', [AdminProductsController::class, 'store'])->name('admin.products.store');
+        Route::delete('/products/{product}', [AdminProductsController::class, 'destroy'])->name('admin.products.destroy');
     });
+    Route::get('/products/{product}', [AdminProductsController::class, 'edit'])->name('admin.products.edit');
+    Route::patch('/products/{product}', [AdminProductsController::class, 'update'])->name('admin.products.update');
+    Route::get('/events/{event}', [AdminEventsController::class, 'edit'])->name('admin.events.edit');
+    Route::patch('/events/{event}', [AdminEventsController::class, 'update'])->name('admin.events.update');
     Route::get('/marketing', function () {
         return redirect()->route('admin.dashboard');
     })->name('admin.marketing.index');

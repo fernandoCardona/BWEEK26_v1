@@ -14,12 +14,13 @@ class TicketingService
     /**
      * Issue a ticket for a user and an event.
      */
-    public function issueTicket(User $user, Event $event, string $type, float $price): Ticket
+    public function issueTicket(User $user, Event $event, string $type, float $price, ?string $eventTicketTypeId = null): Ticket
     {
         $qrCode = $this->generateUniqueCode();
 
         return Ticket::create([
             'event_id' => $event->id,
+            'event_ticket_type_id' => $eventTicketTypeId,
             'user_id' => $user->id,
             'qr_code' => $qrCode,
             'ticket_type' => $type,

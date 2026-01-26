@@ -7,6 +7,7 @@ export default function Edit({ event, parents, defaults, can }) {
     const isCreate = !event;
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     useLockBodyScroll(confirmDeleteOpen);
+    const ticketTypes = event?.ticket_types ?? [];
 
     const initialStart = event?.start_at ? new Date(event.start_at) : null;
     const initialEnd = event?.end_at ? new Date(event.end_at) : null;
@@ -28,6 +29,13 @@ export default function Edit({ event, parents, defaults, can }) {
         banner: null,
         logo: null,
         flyer: null,
+    });
+
+    const ticketTypeForm = useForm({
+        code: 'vip',
+        price: '',
+        stock: 0,
+        is_active: true,
     });
 
     const bannerPreview = useMemo(() => {
@@ -52,6 +60,17 @@ export default function Edit({ event, parents, defaults, can }) {
         } else {
             form.patch(route('admin.events.update', event.id), { forceFormData: true, preserveScroll: true });
         }
+    };
+
+    const submitTicketType = (e) => {
+        e.preventDefault();
+        if (!event) return;
+        ticketTypeForm.post(route('admin.events.ticket-types.upsert', event.id), { preserveScroll: true });
+    };
+
+    const deleteTicketType = (ticketTypeId) => {
+        if (!event) return;
+        router.delete(route('admin.events.ticket-types.destroy', [event.id, ticketTypeId]), { preserveScroll: true });
     };
 
     const destroy = () => {
@@ -198,6 +217,81 @@ export default function Edit({ event, parents, defaults, can }) {
                             </div>
                         </div>
 
+                        {!isCreate && (
+                            <div className="pt-2">
+                                <div className="glass-card p-6 border border-white/10 bg-white/5">
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                                        <div>
+                                            <h3 className="text-xl font-bold">Tickets</h3>
+                                            <p className="text-sm text-gray-400">VIP y Standard para este evento o subevento.</p>
+                                        </div>
+                                    </div>
+
+                                    {ticketTypes.length ? (
+                                        <div className="space-y-3 mb-6">
+                                            {ticketTypes.map((t) => (
+                                                <div key={t.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                                                    <div className="min-w-0">
+                                                        <p className="font-black text-sm uppercase tracking-widest">{t.code}</p>
+                                                        <p className="text-xs text-gray-500">
+                                                            {t.price}€ • stock {t.stock} • {t.is_active ? 'activo' : 'inactivo'}
+                                                        </p>
+                                                    </div>
+                                                    {can?.manage_ticket_types && (
+                                                        <button
+                                                            type="button"
+                                                            className="px-5 py-3 text-sm rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-colors"
+                                                            onClick={() => deleteTicketType(t.id)}
+                                                        >
+                                                            Eliminar
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-400 mb-6">Todavía no hay tipos de ticket configurados.</p>
+                                    )}
+
+                                    {can?.manage_ticket_types && (
+                                        <form onSubmit={submitTicketType} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Tipo</label>
+                                                <select
+                                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                                    value={ticketTypeForm.data.code}
+                                                    onChange={(e) => ticketTypeForm.setData('code', e.target.value)}
+                                                >
+                                                    <option value="vip">VIP</option>
+                                                    <option value="standard">Standard</option>
+                                                </select>
+                                                {ticketTypeForm.errors.code && <div className="text-xs text-red-400 mt-1">{ticketTypeForm.errors.code}</div>}
+                                            </div>
+                                            <Field
+                                                label="Precio (€)"
+                                                value={ticketTypeForm.data.price}
+                                                onChange={(e) => ticketTypeForm.setData('price', e.target.value)}
+                                                error={ticketTypeForm.errors.price}
+                                                placeholder="0.00"
+                                            />
+                                            <Field
+                                                label="Stock"
+                                                value={ticketTypeForm.data.stock}
+                                                onChange={(e) => ticketTypeForm.setData('stock', e.target.value)}
+                                                error={ticketTypeForm.errors.stock}
+                                                placeholder="0"
+                                            />
+                                            <div className="flex items-end">
+                                                <button type="submit" className="btn-primary w-full px-6 py-3 text-sm" disabled={ticketTypeForm.processing}>
+                                                    Guardar ticket
+                                                </button>
+                                            </div>
+                                        </form>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex items-center gap-3 pt-2">
                             <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={form.processing}>
                                 Guardar
@@ -304,4 +398,3 @@ function formatTimeHMS(d) {
     const ss = String(d.getSeconds()).padStart(2, '0');
     return `${hh}:${mm}:${ss}`;
 }
-

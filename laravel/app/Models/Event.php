@@ -53,6 +53,11 @@ class Event extends Model
         return $this->hasMany(Ticket::class);
     }
 
+    public function ticketTypes()
+    {
+        return $this->hasMany(EventTicketType::class);
+    }
+
     public function parent()
     {
         return $this->belongsTo(Event::class, 'parent_event_id');
