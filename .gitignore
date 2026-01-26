@@ -12,8 +12,15 @@
 /laravel/storage/logs/*
 /laravel/bootstrap/cache/*
 
+/\.env
+/\.env.*
+!/.env.example
+
 /laravel/.env
 /laravel/.env.*
+!/laravel/.env.example
+
+/nginx-proxy-manager/data/database.sqlite
 
 # IDE
 /.vscode/
