@@ -133,4 +133,14 @@ class User extends Authenticatable implements JWTSubject
     {
         $this->notify(new \App\Notifications\ResetPasswordNotification($token));
     }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
+
+    public function cart()
+    {
+        return $this->hasOne(Cart::class);
+    }
 }

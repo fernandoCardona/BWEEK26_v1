@@ -13,6 +13,7 @@ export default function Navigation() {
     const [mobileOpen, setMobileOpen] = useState(false);
     const [openKey, setOpenKey] = useState(null);
     const closeTimer = useRef(null);
+    const closeDelayMs = 280;
     const locales = { es: 'ES', ca: 'CA', en: 'EN', fr: 'FR', it: 'IT', de: 'DE' };
     const currentLocale = (props.locale || 'es').toUpperCase();
     const [menu, setMenu] = useState({
@@ -146,11 +147,11 @@ export default function Navigation() {
                             setOpenKey('about');
                         }}
                         onMouseLeave={() => {
-                            closeTimer.current = setTimeout(() => setOpenKey(null), 120);
+                            closeTimer.current = setTimeout(() => setOpenKey(null), closeDelayMs);
                         }}
                     >
                         <Link href="/about" className="nav-link">About</Link>
-                        <div className={`absolute left-0 top-full ${openKey==='about' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
+                        <div className={`absolute left-0 top-full pt-4 ${openKey==='about' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                             <div className="glass-card p-3">
                                 <ul className="min-w-64">
                                     {[
@@ -160,7 +161,7 @@ export default function Navigation() {
                                         { label: 'Galeria', slug: 'galeria' },
                                     ].map((p) => (
                                         <li key={p.slug}>
-                                            <Link href={`/about/${p.slug}`} className="block px-3 py-2 text-sm text-gray-300 hover:text-white">
+                                            <Link href={`/about/${p.slug}`} className="nav-link block px-3 py-2 text-sm">
                                                 {p.label}
                                             </Link>
                                         </li>
@@ -178,12 +179,12 @@ export default function Navigation() {
                             setOpenKey('events');
                         }}
                         onMouseLeave={() => {
-                            closeTimer.current = setTimeout(() => setOpenKey(null), 120);
+                            closeTimer.current = setTimeout(() => setOpenKey(null), closeDelayMs);
                         }}
                     >
                         <Link href="/events" className="nav-link">Events</Link>
                         {menu.events?.length > 0 && (
-                            <div className={`absolute left-0 top-full ${openKey==='events' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
+                            <div className={`absolute left-0 top-full pt-4 ${openKey==='events' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                                 <div className="glass-card p-3">
                                     <ul className="min-w-64">
                                         {[
@@ -191,7 +192,7 @@ export default function Navigation() {
                                             { label: 'Bears Sitges Week', slug: 'bears-sitges-week' },
                                         ].map((p) => (
                                             <li key={p.slug}>
-                                                <Link href={`/events/${p.slug}`} className="block px-3 py-2 text-sm text-gray-300 hover:text-white">
+                                                <Link href={`/events/${p.slug}`} className="nav-link block px-3 py-2 text-sm">
                                                     {p.label}
                                                 </Link>
                                             </li>
@@ -220,11 +221,11 @@ export default function Navigation() {
                             setOpenKey('recomendations');
                         }}
                         onMouseLeave={() => {
-                            closeTimer.current = setTimeout(() => setOpenKey(null), 120);
+                            closeTimer.current = setTimeout(() => setOpenKey(null), closeDelayMs);
                         }}
                     >
                         <Link href="/recomendations" className="nav-link">Recomendations</Link>
-                        <div className={`absolute left-0 top-full ${openKey==='recomendations' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
+                        <div className={`absolute left-0 top-full pt-4 ${openKey==='recomendations' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                             <div className="glass-card p-3">
                                 <ul className="min-w-64">
                                     {[
@@ -238,7 +239,7 @@ export default function Navigation() {
                                         { label: 'Brothered', slug: 'brothered' },
                                     ].map((p) => (
                                         <li key={p.slug}>
-                                            <Link href={`/recomendations/${p.slug}`} className="block px-3 py-2 text-sm text-gray-300 hover:text-white">
+                                            <Link href={`/recomendations/${p.slug}`} className="nav-link block px-3 py-2 text-sm">
                                                 {p.label}
                                             </Link>
                                         </li>
@@ -258,16 +259,16 @@ export default function Navigation() {
                             setOpenKey('lang');
                         }}
                         onMouseLeave={() => {
-                            closeTimer.current = setTimeout(() => setOpenKey(null), 120);
+                            closeTimer.current = setTimeout(() => setOpenKey(null), closeDelayMs);
                         }}
                     >
                         <button className="nav-link flex items-center">{currentLocale}</button>
-                        <div className={`absolute right-0 top-full ${openKey==='lang' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
+                        <div className={`absolute right-0 top-full pt-4 ${openKey==='lang' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                             <div className="glass-card p-2">
-                                <ul className="min-w-36">
+                                <ul className="w-max">
                                     {Object.entries(locales).map(([code]) => (
                                         <li key={code}>
-                                            <a href="#" className="block px-3 py-2 text-sm text-gray-300 hover:text-white">
+                                            <a href="#" className="nav-link block px-3 py-2 text-sm whitespace-nowrap">
                                                 {code.toUpperCase()}
                                             </a>
                                         </li>

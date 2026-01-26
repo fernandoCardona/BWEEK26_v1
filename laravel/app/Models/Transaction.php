@@ -5,31 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class Ticket extends Model
+class Transaction extends Model
 {
-    protected $table = 'tickets';
-
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
-        'event_id',
         'user_id',
-        'transaction_id',
-        'qr_code',
-        'ticket_type',
-        'price',
+        'type',
         'status',
-        'purchased_at',
-        'validated_at',
+        'currency',
+        'total_amount',
+        'meta',
     ];
 
     protected $casts = [
         'id' => 'string',
-        'price' => 'decimal:2',
-        'purchased_at' => 'datetime',
-        'validated_at' => 'datetime',
+        'total_amount' => 'decimal:2',
+        'meta' => 'json',
     ];
 
     protected static function boot()
@@ -42,18 +36,14 @@ class Ticket extends Model
         });
     }
 
-    public function event()
-    {
-        return $this->belongsTo(Event::class);
-    }
-
     public function user()
     {
         return $this->belongsTo(User::class);
     }
 
-    public function transaction()
+    public function items()
     {
-        return $this->belongsTo(Transaction::class);
+        return $this->hasMany(TransactionItem::class);
     }
 }
+

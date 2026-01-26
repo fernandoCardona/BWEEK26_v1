@@ -5,6 +5,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\PagesController as AdminPagesController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
+use App\Http\Controllers\Admin\EventsController as AdminEventsController;
 use App\Http\Controllers\ChatbotWebController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\Admin\UsersController as AdminUsersController;
@@ -91,9 +92,14 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     Route::get('/ecommerce', function () {
         return redirect()->route('admin.dashboard');
     })->name('admin.ecommerce.index');
-    Route::get('/events', function () {
-        return redirect()->route('admin.dashboard');
-    })->name('admin.events.index');
+    Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events.index');
+    Route::get('/events/{event}', [AdminEventsController::class, 'edit'])->name('admin.events.edit');
+    Route::patch('/events/{event}', [AdminEventsController::class, 'update'])->name('admin.events.update');
+    Route::middleware([EnsureSuperAdmin::class])->group(function () {
+        Route::get('/events/create', [AdminEventsController::class, 'create'])->name('admin.events.create');
+        Route::post('/events', [AdminEventsController::class, 'store'])->name('admin.events.store');
+        Route::delete('/events/{event}', [AdminEventsController::class, 'destroy'])->name('admin.events.destroy');
+    });
     Route::get('/marketing', function () {
         return redirect()->route('admin.dashboard');
     })->name('admin.marketing.index');

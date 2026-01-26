@@ -1,16 +1,18 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 
-export default function Index({ users, filters, selectedUser, selectedTickets, selectedStats, can }) {
+export default function Index({ users, filters, selectedUser, selectedTickets, selectedTransactions, selectedCart, selectedStats, can }) {
     const { props } = usePage();
     const authRole = props?.auth?.user?.role;
     const authUserId = props?.auth?.user?.id;
     const [q, setQ] = useState(filters?.q ?? '');
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [createOpen, setCreateOpen] = useState(false);
-    useLockBodyScroll(createOpen || !!deleteTarget);
+    const [openTxId, setOpenTxId] = useState(null);
+    useLockBodyScroll(createOpen || !!deleteTarget || !!openTxId);
+    const avatarInputRef = useRef(null);
 
     useEffect(() => {
         setQ(filters?.q ?? '');
@@ -95,16 +97,6 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
         router.post(route('admin.users.password.reset', selectedUser.id), {}, { preserveScroll: true });
     };
 
-    const updateTicketStatus = (ticketId, status) => {
-        if (!selectedUser) return;
-        router.patch(route('admin.users.tickets.update', [selectedUser.id, ticketId]), { status }, { preserveScroll: true });
-    };
-
-    const deleteTicket = (ticketId) => {
-        if (!selectedUser) return;
-        router.delete(route('admin.users.tickets.destroy', [selectedUser.id, ticketId]), { preserveScroll: true });
-    };
-
     const toggleUserActive = (userId) => {
         router.patch(route('admin.users.active', userId), {}, { preserveScroll: true });
     };
@@ -134,7 +126,8 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
     };
 
     const stats = selectedStats ?? null;
-    const tickets = selectedTickets ?? [];
+    const transactions = selectedTransactions ?? [];
+    const cart = selectedCart ?? null;
 
     const selectedTitle = useMemo(() => {
         if (!selectedUser) return null;
@@ -142,10 +135,19 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
         return full || selectedUser.email;
     }, [selectedId]);
 
+    const avatarPreview = useMemo(() => {
+        if (profileForm.data.avatar instanceof File) {
+            return URL.createObjectURL(profileForm.data.avatar);
+        }
+        return selectedUser?.avatar_url ?? null;
+    }, [profileForm.data.avatar, selectedId, selectedUser?.avatar_url]);
+
     const canManageSelected =
         !!selectedUser &&
         selectedUser.id !== authUserId &&
         ((authRole === 'super_admin' && selectedUser.role !== 'super_admin') || (authRole === 'admin' && selectedUser.role === 'user'));
+
+    const openTx = useMemo(() => transactions.find((t) => t.id === openTxId) ?? null, [openTxId, transactions]);
 
     return (
         <AdminLayout active="users" headTitle="Admin • Users">
@@ -276,20 +278,35 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                 <form onSubmit={submitUpdateUser} className="space-y-4">
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Imagen (opcional)</label>
-                                        <div className="flex items-center gap-4">
-                                            <div className="w-16 h-16 rounded-2xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
-                                                {selectedUser.avatar_url ? (
-                                                    <img src={selectedUser.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+                                        <div className="flex items-center gap-6">
+                                            <div className="w-32 h-32 rounded-3xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
+                                                {avatarPreview ? (
+                                                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                                                 ) : (
                                                     <span className="text-xs text-gray-500">Sin</span>
                                                 )}
                                             </div>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm"
-                                                onChange={(e) => profileForm.setData('avatar', e.target.files?.[0] ?? null)}
-                                            />
+                                            <div className="min-w-0 flex-1">
+                                                <input
+                                                    ref={avatarInputRef}
+                                                    type="file"
+                                                    accept="image/*"
+                                                    className="hidden"
+                                                    onChange={(e) => profileForm.setData('avatar', e.target.files?.[0] ?? null)}
+                                                />
+                                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                                    <button
+                                                        type="button"
+                                                        className="btn-secondary px-6 py-3 text-sm"
+                                                        onClick={() => avatarInputRef.current?.click()}
+                                                    >
+                                                        Seleccionar archivo
+                                                    </button>
+                                                    <span className="text-sm text-gray-300 truncate">
+                                                        {profileForm.data.avatar?.name ? profileForm.data.avatar.name : 'Ningún archivo seleccionado'}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                         {profileForm.errors.avatar && <div className="text-xs text-red-400 mt-1">{profileForm.errors.avatar}</div>}
                                     </div>
@@ -340,46 +357,57 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                             </div>
 
                             <div className="glass-card p-6">
-                                <h3 className="text-xl font-bold mb-6">Compras • Tickets</h3>
-                                {tickets.length ? (
+                                <h3 className="text-xl font-bold mb-6">Carrito</h3>
+                                {(cart?.items ?? []).length ? (
                                     <div className="space-y-3">
-                                        {tickets.map((t) => (
-                                            <div key={t.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                                        {cart.items.map((i) => (
+                                            <div key={i.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
                                                 <div className="min-w-0">
-                                                    <p className="font-bold text-sm truncate">{t.event?.name?.es || t.event?.name?.en || 'Evento'}</p>
-                                                    <p className="text-xs text-gray-500 truncate">
-                                                        {t.ticket_type} • {t.price}€ • {t.purchased_at ? new Date(t.purchased_at).toLocaleString() : '-'}
-                                                    </p>
-                                                    <p className="text-[10px] text-gray-500 mt-1 truncate">QR: {t.qr_code}</p>
+                                                    <p className="font-bold text-sm truncate">{i.product?.name?.es || i.product?.name?.en || 'Producto'}</p>
+                                                    <p className="text-xs text-gray-500">x{i.quantity}</p>
                                                 </div>
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <select
-                                                        className="bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm"
-                                                        value={t.status}
-                                                        onChange={(e) => updateTicketStatus(t.id, e.target.value)}
-                                                    >
-                                                        <option value="active">active</option>
-                                                        <option value="cancelled">cancelled</option>
-                                                        <option value="refunded">refunded</option>
-                                                    </select>
-                                                    <button onClick={() => deleteTicket(t.id)} className="btn-secondary px-4 py-2 text-sm">
-                                                        Eliminar
-                                                    </button>
+                                                <div className="text-right shrink-0">
+                                                    <p className="text-sm font-bold">{i.unit_price}€</p>
                                                 </div>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-gray-400">No hay tickets asociados a este usuario.</p>
+                                    <p className="text-gray-400">El carrito está vacío.</p>
                                 )}
                             </div>
 
                             <div className="glass-card p-6">
-                                <h3 className="text-xl font-bold mb-2">Compras • Merchandising</h3>
-                                <p className="text-gray-400">
-                                    Pendiente de implementación: no hay tablas de pedidos/lineas de merch en la base de datos todavía.
-                                    Cuando añadamos Orders/OrderItems, esta sección mostrará el historial y permitirá gestionar estado/eliminar.
-                                </p>
+                                <h3 className="text-xl font-bold mb-6">Transacciones</h3>
+                                {transactions.length ? (
+                                    <div className="space-y-3">
+                                        {transactions.map((t) => (
+                                            <button
+                                                key={t.id}
+                                                type="button"
+                                                onClick={() => setOpenTxId(t.id)}
+                                                className="w-full text-left p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors"
+                                            >
+                                                <div className="flex items-start justify-between gap-4">
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-sm truncate">
+                                                            {t.type === 'ticket' ? 'Tickets' : t.type === 'merch' ? 'Merchandising' : 'Transacción'}
+                                                        </p>
+                                                        <p className="text-xs text-gray-500">
+                                                            {t.created_at ? new Date(t.created_at).toLocaleString() : '-'} • {t.items?.length ?? 0} items
+                                                        </p>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className="text-sm font-black">{t.total_amount}€</p>
+                                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">{t.status}</p>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-gray-400">No hay transacciones asociadas a este usuario.</p>
+                                )}
                             </div>
 
                             <div className="glass-card p-6">
@@ -411,6 +439,52 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                     )}
                 </div>
             </div>
+            {openTx && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6" onClick={() => setOpenTxId(null)}>
+                    <div
+                        className="glass-card max-w-3xl w-full p-6 border border-white/10 bg-white/10 shadow-2xl shadow-black/60"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start justify-between gap-4 mb-6">
+                            <div className="min-w-0">
+                                <h3 className="text-2xl font-black tracking-tight truncate">
+                                    {openTx.type === 'ticket' ? 'Transacción de tickets' : openTx.type === 'merch' ? 'Transacción de merch' : 'Transacción'}
+                                </h3>
+                                <p className="text-sm text-gray-400">
+                                    {openTx.created_at ? new Date(openTx.created_at).toLocaleString() : '-'} • {openTx.status}
+                                </p>
+                            </div>
+                            <button className="btn-secondary px-4 py-2 text-sm" onClick={() => setOpenTxId(null)}>
+                                Cerrar
+                            </button>
+                        </div>
+
+                        <div className="space-y-3">
+                            {(openTx.items ?? []).map((it) => (
+                                <div key={it.id} className="flex items-start justify-between gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
+                                    <div className="min-w-0">
+                                        <p className="font-bold text-sm truncate">{it.title || 'Item'}</p>
+                                        {it.ticket?.event && (
+                                            <p className="text-xs text-gray-500 truncate">{it.ticket.event.name?.es || it.ticket.event.name?.en || 'Evento'}</p>
+                                        )}
+                                        <p className="text-xs text-gray-500">x{it.quantity}</p>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                        <p className="text-sm font-bold">{it.total_price}€</p>
+                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">{it.kind}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-6">
+                            <span className="text-sm text-gray-400">Total</span>
+                            <span className="text-2xl font-black">{openTx.total_amount}€</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-2">Una transacción realizada no se puede editar.</p>
+                    </div>
+                </div>
+            )}
             {createOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
                     <div className="glass-card max-w-lg w-full p-6 border border-white/10 bg-white/10 shadow-2xl shadow-black/60">

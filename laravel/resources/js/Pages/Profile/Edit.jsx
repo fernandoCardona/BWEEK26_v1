@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import UserLayout from '@/Layouts/UserLayout';
 import { router, useForm, usePage } from '@inertiajs/react';
@@ -10,6 +10,7 @@ export default function Edit() {
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     const role = user?.role ?? 'user';
     useLockBodyScroll(confirmDeleteOpen);
+    const avatarInputRef = useRef(null);
 
     const profileForm = useForm({
         name: user?.name ?? '',
@@ -65,20 +66,35 @@ export default function Edit() {
                     <form onSubmit={submitProfile} className="space-y-4">
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Imagen (opcional)</label>
-                            <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-2xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
+                            <div className="flex items-center gap-6">
+                                <div className="w-32 h-32 rounded-3xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
                                     {avatarPreview ? (
                                         <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
                                     ) : (
                                         <span className="text-xs text-gray-500">Sin</span>
                                     )}
                                 </div>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm"
-                                    onChange={(e) => profileForm.setData('avatar', e.target.files?.[0] ?? null)}
-                                />
+                                <div className="min-w-0 flex-1">
+                                    <input
+                                        ref={avatarInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => profileForm.setData('avatar', e.target.files?.[0] ?? null)}
+                                    />
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                                        <button
+                                            type="button"
+                                            className="btn-secondary px-6 py-3 text-sm"
+                                            onClick={() => avatarInputRef.current?.click()}
+                                        >
+                                            Seleccionar archivo
+                                        </button>
+                                        <span className="text-sm text-gray-300 truncate">
+                                            {profileForm.data.avatar?.name ? profileForm.data.avatar.name : 'Ningún archivo seleccionado'}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
                             {profileForm.errors.avatar && <div className="text-xs text-red-400 mt-1">{profileForm.errors.avatar}</div>}
                         </div>
