@@ -87,13 +87,16 @@ class RegisteredUserController extends Controller
             ]);
         }
 
-        $user = User::create([
+        $user = new User();
+        $user->fill([
             'name' => $name,
             'email' => $data['email'],
             'password' => $passwordHash,
-            'role' => 'user',
             'email_verified_at' => now(),
         ]);
+        $user->role = 'user';
+        $user->is_active = true;
+        $user->save();
 
         $record->delete();
 

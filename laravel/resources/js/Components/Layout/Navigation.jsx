@@ -182,7 +182,7 @@ export default function Navigation() {
                             closeTimer.current = setTimeout(() => setOpenKey(null), closeDelayMs);
                         }}
                     >
-                        <Link href="/events" className="nav-link">Events</Link>
+                        <Link href="/program" className="nav-link">Events</Link>
                         {menu.events?.length > 0 && (
                             <div className={`absolute left-0 top-full pt-4 ${openKey==='events' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                                 <div className="glass-card p-3">
@@ -192,7 +192,7 @@ export default function Navigation() {
                                             { label: 'Bears Sitges Week', slug: 'bears-sitges-week' },
                                         ].map((p) => (
                                             <li key={p.slug}>
-                                                <Link href={`/events/${p.slug}`} className="nav-link block px-3 py-2 text-sm">
+                                                <Link href={`/program/${p.slug}`} className="nav-link block px-3 py-2 text-sm">
                                                     {p.label}
                                                 </Link>
                                             </li>

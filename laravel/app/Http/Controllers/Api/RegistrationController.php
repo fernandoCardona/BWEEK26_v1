@@ -29,14 +29,17 @@ class RegistrationController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user = User::create([
+        $user = new User();
+        $user->fill([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'phone' => $request->phone,
             'registration_source' => $request->registration_source ?? 'web',
-            'role' => 'user',
         ]);
+        $user->role = 'user';
+        $user->is_active = true;
+        $user->save();
 
         // If there's a lead with this email, convert it
         $lead = Lead::where('email', $request->email)->first();

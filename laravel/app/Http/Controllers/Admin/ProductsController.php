@@ -119,7 +119,7 @@ class ProductsController extends Controller
             'price' => ['required', 'numeric', 'min:0'],
             'stock' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
-            'image' => ['nullable', 'file', 'max:4096'],
+            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ]);
 
         $locale = app()->getLocale();
@@ -153,4 +153,3 @@ class ProductsController extends Controller
         $product->save();
     }
 }
-

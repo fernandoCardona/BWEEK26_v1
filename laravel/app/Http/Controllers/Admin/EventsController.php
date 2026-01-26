@@ -170,9 +170,9 @@ class EventsController extends Controller
             'start_time' => ['required', 'string', 'regex:/^\\d{2}:\\d{2}:\\d{2}$/'],
             'end_time' => ['required', 'string', 'regex:/^\\d{2}:\\d{2}:\\d{2}$/'],
             'is_active' => ['nullable', 'boolean'],
-            'banner' => ['nullable', 'file', 'max:4096'],
-            'logo' => ['nullable', 'file', 'max:4096'],
-            'flyer' => ['nullable', 'file', 'max:4096'],
+            'banner' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'flyer' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ]);
 
         $locale = app()->getLocale();

@@ -11,8 +11,8 @@ use App\Http\Controllers\Api\ChatbotAuthController;
 */
 
 Route::prefix('v1/chatbot')->group(function () {
-    Route::post('/auth/login', [ChatbotAuthController::class, 'login']);
-    Route::post('/auth/register', [\App\Http\Controllers\Api\RegistrationController::class, 'register']);
+    Route::post('/auth/login', [ChatbotAuthController::class, 'login'])->middleware('throttle:chatbot-auth');
+    Route::post('/auth/register', [\App\Http\Controllers\Api\RegistrationController::class, 'register'])->middleware('throttle:chatbot-auth');
 
 
     Route::middleware(['auth:api'])->group(function () {

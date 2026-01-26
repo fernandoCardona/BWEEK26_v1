@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use App\Models\AuthLog;
+use Illuminate\Support\Facades\Log;
 
 class ChatbotAuthController extends Controller
 {
@@ -36,11 +37,22 @@ class ChatbotAuthController extends Controller
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             $this->logAuth($request, null, 'failed_login');
+            Log::warning('chatbot_login_failed', [
+                'ip' => $request->ip(),
+                'email' => $request->input('email'),
+                'phone' => $request->input('phone'),
+                'channel' => $request->input('channel'),
+            ]);
             return response()->json(['error' => 'Invalid credentials'], 401);
         }
 
         if ($user->is_active === false) {
             $this->logAuth($request, $user->id, 'disabled_user_login');
+            Log::warning('chatbot_login_disabled_user', [
+                'ip' => $request->ip(),
+                'user_id' => $user->id,
+                'channel' => $request->input('channel'),
+            ]);
             return response()->json(['error' => 'User disabled'], 403);
         }
 

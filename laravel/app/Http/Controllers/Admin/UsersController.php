@@ -286,17 +286,19 @@ class UsersController extends Controller
 
         $tempPassword = Str::random(32);
 
-        $user = User::create([
+        $user = new User();
+        $user->fill([
             'name' => $data['name'],
             'last_name' => $data['last_name'] ?? null,
             'nickname' => $data['nickname'] ?? null,
             'email' => $data['email'],
             'phone' => $data['phone'] ?? null,
-            'role' => $data['role'] ?? 'user',
             'password' => Hash::make($tempPassword),
             'email_verified_at' => now(),
-            'is_active' => true,
         ]);
+        $user->role = $data['role'] ?? 'user';
+        $user->is_active = true;
+        $user->save();
 
         Password::sendResetLink(['email' => $user->email]);
 
@@ -325,9 +327,9 @@ class UsersController extends Controller
             abort(403);
         }
 
-        $user->update([
+        $user->forceFill([
             'is_active' => !$user->is_active,
-        ]);
+        ])->save();
 
         return back();
     }
@@ -404,9 +406,9 @@ class UsersController extends Controller
             ]);
         }
 
-        $user->update([
+        $user->forceFill([
             'role' => $request->string('role')->toString(),
-        ]);
+        ])->save();
 
         return back();
     }

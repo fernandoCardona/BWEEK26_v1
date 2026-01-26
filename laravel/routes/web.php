@@ -39,10 +39,10 @@ Route::get('/about/{page}', function ($page) {
     return app(WebsiteMenuController::class)->page('about', $page);
 })->name('about.page');
 
-Route::get('/events', [WebsiteMenuController::class, 'category'])->defaults('category', 'events')->name('events.menu');
-Route::get('/events/{page}', function ($page) {
+Route::get('/program', [WebsiteMenuController::class, 'category'])->defaults('category', 'events')->name('program.index');
+Route::get('/program/{page}', function ($page) {
     return app(WebsiteMenuController::class)->page('events', $page);
-})->name('events.page');
+})->name('program.page');
 
 Route::get('/magazine', [WebsiteMenuController::class, 'category'])->defaults('category', 'magazine')->name('magazine.index');
 Route::get('/magazine/{page}', function ($page) {
