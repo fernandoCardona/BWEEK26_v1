@@ -10,7 +10,7 @@ class WebsiteMenuController extends Controller
 {
     private function base(): string
     {
-        return base_path('WEBSITE GENERAL INFO');
+        return (string) config('website_menu.base_path', base_path('WEBSITE GENERAL INFO'));
     }
 
     private function categoryMap(): array
@@ -89,17 +89,46 @@ class WebsiteMenuController extends Controller
         return response()->json(['pages' => $pages]);
     }
 
-    private function pagePath(string $category, string $page): array
+    private function resolvePageBase(string $category, string $page): string
     {
         $map = $this->categoryMap();
         if (!isset($map[$category])) {
             abort(404);
         }
         $dir = $map[$category];
-        $base = $dir . DIRECTORY_SEPARATOR . $page;
-        if ($category === 'store') {
-            $base = $dir;
+        if (!File::isDirectory($dir)) {
+            abort(404);
         }
+
+        $dirReal = realpath($dir);
+        if ($dirReal === false) {
+            abort(404);
+        }
+
+        if ($category === 'store' || $page === 'index') {
+            return $dirReal;
+        }
+
+        if (!preg_match('/^[a-z0-9][a-z0-9_-]{0,80}$/i', $page)) {
+            abort(404);
+        }
+
+        $candidate = $dirReal . DIRECTORY_SEPARATOR . $page;
+        $candidateReal = realpath($candidate);
+        if ($candidateReal === false) {
+            abort(404);
+        }
+
+        if (!str_starts_with($candidateReal, $dirReal . DIRECTORY_SEPARATOR)) {
+            abort(404);
+        }
+
+        return $candidateReal;
+    }
+
+    private function pagePath(string $category, string $page): array
+    {
+        $base = $this->resolvePageBase($category, $page);
         return [
             'text' => $base . DIRECTORY_SEPARATOR . 'text.txt',
             'images' => $base . DIRECTORY_SEPARATOR . 'images',
@@ -119,6 +148,13 @@ class WebsiteMenuController extends Controller
         $result = [];
         if (File::isDirectory($dir)) {
             foreach (File::files($dir) as $file) {
+                $ext = strtolower($file->getExtension());
+                if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                    continue;
+                }
+                if ($file->getSize() > 5 * 1024 * 1024) {
+                    continue;
+                }
                 $mime = File::mimeType($file->getPathname()) ?: 'image/jpeg';
                 $data = base64_encode(File::get($file->getPathname()));
                 $result[] = 'data:' . $mime . ';base64,' . $data;

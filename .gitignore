@@ -7,10 +7,12 @@
 /laravel/public/storage
 /laravel/public/storage/
 /laravel/storage/*.key
+/laravel/storage/
 /laravel/storage/app/*
 /laravel/storage/framework/*
 /laravel/storage/logs/*
 /laravel/bootstrap/cache/*
+/laravel/.phpunit.result.cache
 
 /\.env
 /\.env.*
