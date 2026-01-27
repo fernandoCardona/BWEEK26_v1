@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
+import { formatDMY, formatTimeHM } from '@/utils/date';
 
 export default function Index({ users, filters, selectedUser, selectedTickets, selectedTransactions, selectedCart, selectedStats, can }) {
     const { props } = usePage();
@@ -218,7 +219,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                         <p className="text-sm text-gray-500">ID: {selectedUser.id}</p>
                                         <p className="text-xs text-gray-500 mt-1">
                                             Verificado: {selectedUser.email_verified_at ? 'Sí' : 'No'} • Creado:{' '}
-                                            {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleString() : '-'}
+                                            {selectedUser.created_at ? `${formatDMY(selectedUser.created_at)} ${formatTimeHM(selectedUser.created_at)}` : '-'}
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap items-center gap-4">
@@ -394,7 +395,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                                             {t.type === 'ticket' ? 'Tickets' : t.type === 'merch' ? 'Merchandising' : 'Transacción'}
                                                         </p>
                                                         <p className="text-xs text-gray-500">
-                                                            {t.created_at ? new Date(t.created_at).toLocaleString() : '-'} • {t.items?.length ?? 0} items
+                                                            {t.created_at ? `${formatDMY(t.created_at)} ${formatTimeHM(t.created_at)}` : '-'} • {t.items?.length ?? 0} items
                                                         </p>
                                                     </div>
                                                     <div className="text-right shrink-0">
@@ -451,7 +452,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                     {openTx.type === 'ticket' ? 'Transacción de tickets' : openTx.type === 'merch' ? 'Transacción de merch' : 'Transacción'}
                                 </h3>
                                 <p className="text-sm text-gray-400">
-                                    {openTx.created_at ? new Date(openTx.created_at).toLocaleString() : '-'} • {openTx.status}
+                                    {openTx.created_at ? `${formatDMY(openTx.created_at)} ${formatTimeHM(openTx.created_at)}` : '-'} • {openTx.status}
                                 </p>
                             </div>
                             <button className="btn-secondary px-4 py-2 text-sm" onClick={() => setOpenTxId(null)}>

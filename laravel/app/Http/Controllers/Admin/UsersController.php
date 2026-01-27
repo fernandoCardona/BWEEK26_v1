@@ -18,6 +18,16 @@ use Inertia\Inertia;
 
 class UsersController extends Controller
 {
+    private function isFixedUser(User $user): bool
+    {
+        $emails = array_map(
+            fn ($u) => strtolower(trim((string) ($u['email'] ?? ''))),
+            (array) config('core_users.fixed_users', [])
+        );
+        $emails = array_values(array_filter($emails, fn ($e) => $e !== ''));
+        return in_array(strtolower(trim((string) $user->email)), $emails, true);
+    }
+
     public function index(Request $request)
     {
         $q = $request->string('q');
@@ -227,6 +237,12 @@ class UsersController extends Controller
             'avatar' => ['nullable', 'image', 'max:2048'],
         ]);
 
+        if ($this->isFixedUser($user) && strtolower(trim((string) $data['email'])) !== strtolower(trim((string) $user->email))) {
+            return back()->withErrors([
+                'email' => 'Este usuario es fijo y su email no se puede cambiar.',
+            ]);
+        }
+
         $emailChanged = $data['email'] !== $user->email;
 
         $user->fill([
@@ -311,6 +327,11 @@ class UsersController extends Controller
         if (!$authUser) {
             abort(403);
         }
+        if ($this->isFixedUser($user)) {
+            return back()->withErrors([
+                'user' => 'Este usuario es fijo y no se puede desactivar.',
+            ]);
+        }
         if ($authUser->id === $user->id) {
             return back()->withErrors([
                 'user' => 'No puedes deshabilitar tu propia cuenta.',
@@ -339,6 +360,11 @@ class UsersController extends Controller
         $authUser = $request->user();
         if (!$authUser) {
             abort(403);
+        }
+        if ($this->isFixedUser($user)) {
+            return back()->withErrors([
+                'user' => 'Este usuario es fijo y no se puede eliminar.',
+            ]);
         }
         if ($authUser->id === $user->id) {
             return back()->withErrors([
@@ -398,6 +424,12 @@ class UsersController extends Controller
         $request->validate([
             'role' => ['required', 'string', 'in:user,admin,super_admin'],
         ]);
+
+        if ($this->isFixedUser($user)) {
+            return back()->withErrors([
+                'role' => 'Este usuario es fijo y su rol no se puede cambiar.',
+            ]);
+        }
 
         $authUser = $request->user();
         if ($authUser && $authUser->id === $user->id) {

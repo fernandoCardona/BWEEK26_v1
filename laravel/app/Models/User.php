@@ -10,6 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 
 class User extends Authenticatable implements JWTSubject
 {
@@ -71,7 +72,6 @@ class User extends Authenticatable implements JWTSubject
         return [
             'id' => 'string',
             'email_verified_at' => 'datetime',
-            'password' => 'hashed',
             'interests' => 'json',
             'newsletter_subscribed' => 'boolean',
             'terms_accepted_at' => 'datetime',
@@ -79,6 +79,23 @@ class User extends Authenticatable implements JWTSubject
             'birth_date' => 'date',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function setPasswordAttribute($value): void
+    {
+        if ($value === null) {
+            $this->attributes['password'] = null;
+            return;
+        }
+
+        $password = (string) $value;
+
+        if (preg_match('/^\\$2[ayb]\\$\\d{2}\\$/', $password) === 1) {
+            $this->attributes['password'] = $password;
+            return;
+        }
+
+        $this->attributes['password'] = Hash::make($password);
     }
 
     protected $appends = [

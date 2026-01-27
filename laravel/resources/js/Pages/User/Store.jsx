@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import UserLayout from '@/Layouts/UserLayout';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
+import { formatDMY, formatTimeHM } from '@/utils/date';
 
 export default function Store({ transactions, cart }) {
     const [openTxId, setOpenTxId] = useState(null);
@@ -56,7 +57,7 @@ export default function Store({ transactions, cart }) {
                                             {t.type === 'ticket' ? 'Tickets' : t.type === 'merch' ? 'Merchandising' : 'Transacción'}
                                         </p>
                                         <p className="text-xs text-gray-500">
-                                            {t.created_at ? new Date(t.created_at).toLocaleString() : '-'} • {t.items?.length ?? 0} items
+                                            {t.created_at ? `${formatDMY(t.created_at)} ${formatTimeHM(t.created_at)}` : '-'} • {t.items?.length ?? 0} items
                                         </p>
                                     </div>
                                     <div className="text-right shrink-0">
@@ -84,7 +85,7 @@ export default function Store({ transactions, cart }) {
                                     {openTx.type === 'ticket' ? 'Transacción de tickets' : openTx.type === 'merch' ? 'Transacción de merch' : 'Transacción'}
                                 </h3>
                                 <p className="text-sm text-gray-400">
-                                    {openTx.created_at ? new Date(openTx.created_at).toLocaleString() : '-'} • {openTx.status}
+                                    {openTx.created_at ? `${formatDMY(openTx.created_at)} ${formatTimeHM(openTx.created_at)}` : '-'} • {openTx.status}
                                 </p>
                             </div>
                             <button className="btn-secondary px-4 py-2 text-sm" onClick={() => setOpenTxId(null)}>

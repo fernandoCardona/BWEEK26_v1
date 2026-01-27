@@ -5,29 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class EventTicketType extends Model
+class EventProgramItem extends Model
 {
-    protected $table = 'event_ticket_types';
-
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
         'event_id',
-        'code',
-        'price',
-        'stock',
-        'external_purchase_url',
-        'image_path',
-        'is_active',
+        'day_date',
+        'start_time',
+        'end_time',
+        'title',
+        'description',
+        'flyer_path',
+        'sort_order',
     ];
 
     protected $casts = [
         'id' => 'string',
-        'price' => 'decimal:2',
-        'stock' => 'integer',
-        'is_active' => 'boolean',
+        'day_date' => 'date',
+        'sort_order' => 'integer',
     ];
 
     protected static function boot()

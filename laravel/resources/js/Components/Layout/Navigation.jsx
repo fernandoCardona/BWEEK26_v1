@@ -3,9 +3,10 @@ import { Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { FiLogOut, FiShoppingCart, FiUser, FiX } from 'react-icons/fi';
+import { FaFacebookF, FaInstagram, FaTelegramPlane, FaWhatsapp } from 'react-icons/fa';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 
-export default function Navigation() {
+export default function Navigation({ onOpenLegal }) {
     const { url, props } = usePage();
     const [scrolled, setScrolled] = useState(false);
     const [loginOpen, setLoginOpen] = useState(false);
@@ -152,7 +153,7 @@ export default function Navigation() {
                     >
                         <Link href="/about" className="nav-link">About</Link>
                         <div className={`absolute left-0 top-full pt-4 ${openKey==='about' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
-                            <div className="glass-card p-3">
+                            <div className="glass-card p-3 bg-black/85 border border-white/15">
                                 <ul className="min-w-64">
                                     {[
                                         { label: 'Nosotros', slug: 'nosotros' },
@@ -185,7 +186,7 @@ export default function Navigation() {
                         <Link href="/program" className="nav-link">Events</Link>
                         {menu.events?.length > 0 && (
                             <div className={`absolute left-0 top-full pt-4 ${openKey==='events' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
-                                <div className="glass-card p-3">
+                                <div className="glass-card p-3 bg-black/85 border border-white/15">
                                     <ul className="min-w-64">
                                         {[
                                             { label: 'Bears Sitges Meeting', slug: 'bears-sitges-meeting' },
@@ -226,7 +227,7 @@ export default function Navigation() {
                     >
                         <Link href="/recomendations" className="nav-link">Recomendations</Link>
                         <div className={`absolute left-0 top-full pt-4 ${openKey==='recomendations' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
-                            <div className="glass-card p-3">
+                            <div className="glass-card p-3 bg-black/85 border border-white/15">
                                 <ul className="min-w-64">
                                     {[
                                         { label: 'Alojamiento', slug: 'alojamiento' },
@@ -250,7 +251,7 @@ export default function Navigation() {
                     </li>
                 </ul>
 
-                <div className="flex items-center space-x-6">
+                <div className="flex items-center gap-4">
                     {/* Language dropdown accessible */}
                     <div
                         className="relative"
@@ -264,7 +265,7 @@ export default function Navigation() {
                     >
                         <button className="nav-link flex items-center">{currentLocale}</button>
                         <div className={`absolute right-0 top-full pt-4 ${openKey==='lang' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
-                            <div className="glass-card p-2">
+                            <div className="glass-card p-2 bg-black/85 border border-white/15">
                                 <ul className="w-max">
                                     {Object.entries(locales).map(([code]) => (
                                         <li key={code}>
@@ -280,17 +281,17 @@ export default function Navigation() {
 
                     {props.auth?.user ? (
                         <div className="flex items-center gap-4">
-                            <Link href={route('cart.index')} className="icon-btn" aria-label="Carrito">
+                            <Link href={route('cart.index')} className="icon-btn icon-btn-gradient" aria-label="Carrito">
                                 <FiShoppingCart size={20} />
                             </Link>
-                            <Link href={route('dashboard')} className="icon-btn" aria-label="Dashboard">
+                            <Link href={route('dashboard')} className="icon-btn icon-btn-gradient" aria-label="Dashboard">
                                 {props.auth?.user?.avatar_url ? (
                                     <img src={props.auth.user.avatar_url} alt="Avatar" className="w-8 h-8 rounded-full object-cover" />
                                 ) : (
                                     <FiUser size={20} />
                                 )}
                             </Link>
-                            <Link href={route('logout')} method="post" as="button" className="icon-btn" aria-label="Logout">
+                            <Link href={route('logout')} method="post" as="button" className="icon-btn icon-btn-gradient" aria-label="Logout">
                                 <FiLogOut size={20} />
                             </Link>
                         </div>
@@ -308,78 +309,133 @@ export default function Navigation() {
                             </button>
                         </div>
                     )}
+
+                    <button
+                        aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
+                        className="md:hidden"
+                        onClick={() => setMobileOpen((o) => !o)}
+                        type="button"
+                    >
+                        <span className="block w-7 h-0.5 bg-white mb-1"></span>
+                        <span className="block w-7 h-0.5 bg-white mb-1"></span>
+                        <span className="block w-7 h-0.5 bg-white"></span>
+                    </button>
                 </div>
             </div>
 
             {/* Mobile Navigation */}
-            <div className="md:hidden absolute right-6 top-5">
-                <button
-                    aria-label="Toggle menu"
-                    className="glass-card px-3 py-2"
-                    onClick={() => setMobileOpen((o) => !o)}
-                >
-                    <span className="block w-6 h-0.5 bg-white mb-1"></span>
-                    <span className="block w-6 h-0.5 bg-white mb-1"></span>
-                    <span className="block w-6 h-0.5 bg-white"></span>
-                </button>
-            </div>
-
             <motion.div
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: mobileOpen ? '100vh' : 0, opacity: mobileOpen ? 1 : 0 }}
                 transition={{ duration: 0.4, ease: 'easeInOut' }}
-                className="fixed inset-x-0 top-0 z-40 bg-gradient-to-b from-black via-black/95 to-black/90 overflow-hidden md:hidden"
+                className="fixed inset-0 top-0 z-40 bg-black/95 overflow-hidden md:hidden"
             >
-                <div className="px-6 pt-20 pb-12 space-y-6">
-                    <Link href="/about" className="block text-2xl font-bold tracking-tight">About</Link>
-                    <div className="pl-4 space-y-2">
-                        <Link href="/about/nosotros" className="block text-gray-400 hover:text-white">Nosotros</Link>
-                        <Link href="/about/bs-info" className="block text-gray-400 hover:text-white">Bs Info</Link>
-                        <Link href="/about/bears-solidarios" className="block text-gray-400 hover:text-white">Bears solidarios</Link>
-                        <Link href="/about/galeria" className="block text-gray-400 hover:text-white">Galeria</Link>
-                    </div>
-                    <Link href="/program" className="block text-2xl font-bold tracking-tight">Events</Link>
-                    <div className="pl-4 space-y-2">
-                        <Link href="/program/bears-sitges-meeting" className="block text-gray-400 hover:text-white">Bears Sitges Meeting</Link>
-                        <Link href="/program/bears-sitges-week" className="block text-gray-400 hover:text-white">Bears Sitges Week</Link>
-                    </div>
-                    <Link href="/magazine/noticias" className="block text-2xl font-bold tracking-tight">Magazine</Link>
-                    <Link href="/shop" className="block text-2xl font-bold tracking-tight">Store</Link>
-                    <Link href="/recomendations" className="block text-2xl font-bold tracking-tight">Recomendations</Link>
-                    <div className="pl-4 space-y-2">
-                        <Link href="/recomendations/alojamiento" className="block text-gray-400 hover:text-white">Alojamiento</Link>
-                        <Link href="/recomendations/donde-comer" className="block text-gray-400 hover:text-white">¿Donde comer?</Link>
-                        <Link href="/recomendations/bares-pubs-clubs" className="block text-gray-400 hover:text-white">Bares, Pubs, Clubs</Link>
-                        <Link href="/recomendations/compras" className="block text-gray-400 hover:text-white">¿Donde ir de compras?</Link>
-                        <Link href="/recomendations/saunas-citas-and-more" className="block text-gray-400 hover:text-white">Saunas - Apps de citas</Link>
-                        <Link href="/recomendations/transfers-viajes-y-excursiones" className="block text-gray-400 hover:text-white">Transfers, viajes, excursiones</Link>
-                        <Link href="/recomendations/otros-recomendados" className="block text-gray-400 hover:text-white">Otros recomendados</Link>
-                        <Link href="/recomendations/brothered" className="block text-gray-400 hover:text-white">Brothered</Link>
-                    </div>
-                    <div className="pt-6">
-                        {props.auth?.user ? (
+                <button
+                    type="button"
+                    className="absolute right-6 top-6 icon-btn icon-btn-gradient"
+                    aria-label="Cerrar"
+                    onClick={() => setMobileOpen(false)}
+                >
+                    <FiX size={40} />
+                </button>
+
+                <div className="px-6 pt-20 pb-10 h-full overflow-y-auto">
+                    <div className="space-y-6">
+                        <div>
+                            <div className="block text-2xl font-black tracking-tight text-white">About</div>
+                            <div className="pl-4 space-y-2 mt-2">
+                                <Link href="/about/nosotros" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Nosotros</Link>
+                                <Link href="/about/bs-info" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Bs Info</Link>
+                                <Link href="/about/bears-solidarios" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Bears solidarios</Link>
+                                <Link href="/about/galeria" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Galeria</Link>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="block text-2xl font-black tracking-tight text-white">Events</div>
+                            <div className="pl-4 space-y-2 mt-2">
+                                <Link href="/program/bears-sitges-meeting" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Bears Sitges Meeting</Link>
+                                <Link href="/program/bears-sitges-week" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Bears Sitges Week</Link>
+                            </div>
+                        </div>
+
+                        <Link href="/magazine/noticias" className="nav-link block text-2xl font-black tracking-tight" onClick={() => setMobileOpen(false)}>Magazine</Link>
+                        <Link href="/shop" className="nav-link block text-2xl font-black tracking-tight" onClick={() => setMobileOpen(false)}>Store</Link>
+
+                        <div>
+                            <div className="block text-2xl font-black tracking-tight text-white">Recomendations</div>
+                            <div className="pl-4 space-y-2 mt-2">
+                                <Link href="/recomendations/alojamiento" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Alojamiento</Link>
+                                <Link href="/recomendations/donde-comer" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>¿Donde comer?</Link>
+                                <Link href="/recomendations/bares-pubs-clubs" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Bares, Pubs, Clubs</Link>
+                                <Link href="/recomendations/compras" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>¿Donde ir de compras?</Link>
+                                <Link href="/recomendations/saunas-citas-and-more" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Saunas - Apps de citas</Link>
+                                <Link href="/recomendations/transfers-viajes-y-excursiones" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Transfers, viajes, excursiones</Link>
+                                <Link href="/recomendations/otros-recomendados" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Otros recomendados</Link>
+                                <Link href="/recomendations/brothered" className="nav-link block text-gray-300" onClick={() => setMobileOpen(false)}>Brothered</Link>
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-white/10">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-gray-500 mb-4">Legal</h4>
                             <div className="space-y-3">
-                                <Link href={route('cart.index')} className="btn-secondary w-full py-3 text-center">
-                                    Carrito
-                                </Link>
-                                <Link href={route('dashboard')} className="btn-secondary w-full py-3 text-center">
-                                    Dashboard
-                                </Link>
-                                <Link href={route('logout')} method="post" as="button" className="btn-secondary w-full py-3">
+                                <button type="button" className="nav-link block text-gray-300" onClick={() => { setMobileOpen(false); onOpenLegal?.('privacy'); }}>
+                                    Política de privacidad
+                                </button>
+                                <button type="button" className="nav-link block text-gray-300" onClick={() => { setMobileOpen(false); onOpenLegal?.('terms'); }}>
+                                    Términos y condiciones
+                                </button>
+                                <button type="button" className="nav-link block text-gray-300" onClick={() => { setMobileOpen(false); onOpenLegal?.('cookies'); }}>
+                                    Política de cookies
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-white/10">
+                            <h4 className="text-xs font-black uppercase tracking-widest text-gray-500 mb-4">Redes</h4>
+                            <div className="flex items-center gap-6">
+                                <a href="#" className="icon-btn icon-btn-gradient" aria-label="Facebook">
+                                    <FaFacebookF size={22} />
+                                </a>
+                                <a href="#" className="icon-btn icon-btn-gradient" aria-label="Instagram">
+                                    <FaInstagram size={22} />
+                                </a>
+                                <a href="#" className="icon-btn icon-btn-gradient" aria-label="Telegram">
+                                    <FaTelegramPlane size={22} />
+                                </a>
+                                <a href="#" className="icon-btn icon-btn-gradient" aria-label="WhatsApp">
+                                    <FaWhatsapp size={22} />
+                                </a>
+                            </div>
+                        </div>
+
+                        {props.auth?.user ? (
+                            <div className="pt-6 border-t border-white/10 space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Link href={route('cart.index')} className="btn-secondary w-full py-3 text-center" onClick={() => setMobileOpen(false)}>
+                                        Carrito
+                                    </Link>
+                                    <Link href={route('dashboard')} className="btn-secondary w-full py-3 text-center" onClick={() => setMobileOpen(false)}>
+                                        Dashboard
+                                    </Link>
+                                </div>
+                                <Link href={route('logout')} method="post" as="button" className="btn-secondary w-full py-3" onClick={() => setMobileOpen(false)}>
                                     Salir
                                 </Link>
                             </div>
                         ) : (
-                            <button
-                                onClick={() => {
-                                    setMobileOpen(false);
-                                    setOpenKey(null);
-                                    openLoginModal();
-                                }}
-                                className="btn-primary w-full py-3"
-                            >
-                                Acceder
-                            </button>
+                            <div className="pt-6 border-t border-white/10">
+                                <button
+                                    onClick={() => {
+                                        setMobileOpen(false);
+                                        setOpenKey(null);
+                                        openLoginModal();
+                                    }}
+                                    className="btn-primary w-full py-3"
+                                >
+                                    Acceder
+                                </button>
+                            </div>
                         )}
                     </div>
                 </div>

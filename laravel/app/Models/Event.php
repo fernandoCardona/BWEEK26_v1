@@ -20,6 +20,11 @@ class Event extends Model
         'end_at',
         'location',
         'address',
+        'google_maps_url',
+        'external_ticket_url',
+        'sort_order',
+        'media_folder',
+        'disabled_days',
         'capacity',
         'is_active',
         'banner_path',
@@ -36,6 +41,7 @@ class Event extends Model
         'start_at' => 'datetime',
         'end_at' => 'datetime',
         'is_active' => 'boolean',
+        'disabled_days' => 'json',
     ];
 
     protected static function boot()
@@ -66,5 +72,15 @@ class Event extends Model
     public function subevents()
     {
         return $this->hasMany(Event::class, 'parent_event_id');
+    }
+
+    public function sponsors()
+    {
+        return $this->hasMany(EventSponsor::class);
+    }
+
+    public function programItems()
+    {
+        return $this->hasMany(EventProgramItem::class);
     }
 }

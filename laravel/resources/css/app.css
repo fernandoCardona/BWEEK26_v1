@@ -50,7 +50,7 @@
     .btn-secondary {
         @apply px-8 py-4 bg-transparent text-white font-bold rounded-full border border-white/20;
         @apply hover:bg-white/5 hover:border-white/40 transition-all duration-300;
-        @apply hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-accent-primary hover:via-accent-secondary hover:to-accent-tertiary;
+        @apply hover:text-white;
         @apply active:scale-95;
     }
 
