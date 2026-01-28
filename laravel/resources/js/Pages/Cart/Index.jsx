@@ -47,9 +47,13 @@ export default function Index({ cart: initialCart }) {
         setSuccess(null);
         setProcessing(true);
         try {
-            const res = await axios.post(route('cart.checkout'));
-            setSuccess(`Compra completada. Transaction: ${res.data.transaction_id}`);
-            await refresh();
+            const res = await axios.post(route('checkout.stripe'));
+            const url = res.data?.url;
+            if (url) {
+                window.location.href = url;
+            } else {
+                setError('No se pudo iniciar el pago');
+            }
         } catch (e) {
             setError(e?.response?.data?.message ?? 'No se pudo completar el checkout');
         } finally {
@@ -83,10 +87,17 @@ export default function Index({ cart: initialCart }) {
                                     <div key={item.id} className="flex items-center justify-between gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
                                         <div className="min-w-0">
                                             <p className="font-black text-sm truncate">
-                                                {typeof item.product?.name === 'object' ? item.product?.name?.es ?? 'Producto' : item.product?.name ?? 'Producto'}
+                                                {item.kind === 'ticket'
+                                                    ? `${(item.ticket_type?.code ?? 'TICKET').toUpperCase()} • ${
+                                                          typeof item.event?.name === 'object' ? item.event?.name?.es ?? 'Evento' : item.event?.name ?? 'Evento'
+                                                      }`
+                                                    : typeof item.product?.name === 'object'
+                                                    ? item.product?.name?.es ?? 'Producto'
+                                                    : item.product?.name ?? 'Producto'}
                                             </p>
                                             <p className="text-xs text-gray-500">
-                                                {item.unit_price}€ • stock {item.product?.stock ?? '-'}
+                                                {item.unit_price}€ • stock{' '}
+                                                {item.kind === 'ticket' ? item.ticket_type?.stock ?? '-' : item.product?.stock ?? '-'}
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-3">
@@ -120,4 +131,3 @@ export default function Index({ cart: initialCart }) {
         </Layout>
     );
 }
-

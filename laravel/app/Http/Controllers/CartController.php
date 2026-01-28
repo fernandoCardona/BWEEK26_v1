@@ -234,7 +234,11 @@ class CartController extends Controller
 
     private function toPayload(Cart $cart): array
     {
-        $cart->loadMissing(['items.product:id,name,price,stock,is_active']);
+        $cart->loadMissing([
+            'items.product:id,name,price,stock,is_active',
+            'items.ticketType:id,event_id,code,price,stock,is_active',
+            'items.ticketType.event:id,name,address,is_active',
+        ]);
 
         return [
             'id' => $cart->id,
@@ -242,7 +246,9 @@ class CartController extends Controller
             'items' => $cart->items->map(function (CartItem $item) {
                 return [
                     'id' => $item->id,
+                    'kind' => $item->kind ?? 'product',
                     'product_id' => $item->product_id,
+                    'event_ticket_type_id' => $item->event_ticket_type_id,
                     'quantity' => (int) $item->quantity,
                     'unit_price' => (string) $item->unit_price,
                     'product' => $item->product ? [
@@ -251,6 +257,19 @@ class CartController extends Controller
                         'price' => (string) $item->product->price,
                         'stock' => (int) $item->product->stock,
                         'is_active' => (bool) $item->product->is_active,
+                    ] : null,
+                    'ticket_type' => $item->ticketType ? [
+                        'id' => $item->ticketType->id,
+                        'code' => $item->ticketType->code,
+                        'price' => (string) $item->ticketType->price,
+                        'stock' => (int) $item->ticketType->stock,
+                        'is_active' => (bool) $item->ticketType->is_active,
+                    ] : null,
+                    'event' => $item->ticketType && $item->ticketType->event ? [
+                        'id' => $item->ticketType->event->id,
+                        'name' => $item->ticketType->event->name,
+                        'address' => $item->ticketType->event->address,
+                        'is_active' => (bool) $item->ticketType->event->is_active,
                     ] : null,
                 ];
             }),
