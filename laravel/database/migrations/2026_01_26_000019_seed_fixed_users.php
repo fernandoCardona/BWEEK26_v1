@@ -13,16 +13,18 @@ return new class extends Migration {
             return;
         }
 
-        $password = (string) env('BSW_FIXED_USERS_PASSWORD', '');
-        if ($password === '') {
-            $password = Str::random(24);
-        }
+        $password = (string) env('BSW_FIXED_USERS_PASSWORD', 'c4c4v4c4');
 
         $fixedUsers = [
             [
                 'id' => 'e0e8e9a2-3c9d-4f42-b6ee-0e9d4e8d7a11',
                 'email' => (string) env('BSW_FIXED_USER_EMAIL', ''),
                 'role' => 'user',
+            ],
+            [
+                'id' => '7c5b0e9c-9d15-4fb0-ae3e-6e7c2d0a6b35',
+                'email' => (string) env('BSW_FIXED_ADMIN_EMAIL', ''),
+                'role' => 'admin',
             ],
             [
                 'id' => '5c3b17f2-5d5a-4c74-9e4c-6e4c0a0a7e21',

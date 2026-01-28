@@ -15,13 +15,24 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $fixedPassword = (string) env('BSW_FIXED_USERS_PASSWORD', 'c4c4v4c4');
+
         // Required Users
         User::updateOrCreate(
             ['email' => 'fernandocardonatoro@gmail.com'],
             [
                 'name' => 'Fernando Cardona',
-                'password' => Hash::make('password'),
+                'password' => Hash::make($fixedPassword),
                 'role' => 'super_admin',
+                'preferred_locale' => 'es',
+            ]
+        );
+        User::updateOrCreate(
+            ['email' => 'fernandocardonatoro2@gmail.com'],
+            [
+                'name' => 'Fernando Cardona (Admin)',
+                'password' => Hash::make($fixedPassword),
+                'role' => 'admin',
                 'preferred_locale' => 'es',
             ]
         );
@@ -29,7 +40,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'fct.registro@gmail.com'],
             [
                 'name' => 'FCT Registro',
-                'password' => Hash::make('password'),
+                'password' => Hash::make($fixedPassword),
                 'role' => 'user',
                 'preferred_locale' => 'es',
             ]

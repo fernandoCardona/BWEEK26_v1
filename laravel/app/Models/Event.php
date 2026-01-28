@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
 class Event extends Model
@@ -82,5 +83,17 @@ class Event extends Model
     public function programItems()
     {
         return $this->hasMany(EventProgramItem::class);
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where('is_active', true);
+    }
+
+    public function scopeNotExpired(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('end_at')->orWhere('end_at', '>=', now());
+        });
     }
 }

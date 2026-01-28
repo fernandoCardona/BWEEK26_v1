@@ -20,6 +20,8 @@ class EventTicketType extends Model
         'stock',
         'external_purchase_url',
         'image_path',
+        'description',
+        'legal_terms',
         'is_active',
     ];
 

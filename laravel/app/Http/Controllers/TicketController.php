@@ -27,6 +27,10 @@ class TicketController extends Controller
             abort(401);
         }
 
+        if (!$event->is_active || ($event->end_at && $event->end_at->lt(now()))) {
+            abort(422, 'Evento no disponible');
+        }
+
         $data = $request->validate([
             'quantity' => ['nullable', 'integer', 'min:1', 'max:20'],
             'ticket_type_id' => ['nullable', 'string', 'exists:event_ticket_types,id'],
@@ -53,11 +57,20 @@ class TicketController extends Controller
                 abort(422, 'Tipo de ticket no disponible');
             }
 
+            $freshEvent = Event::query()->where('id', $event->id)->first();
+            if (!$freshEvent || !$freshEvent->is_active || ($freshEvent->end_at && $freshEvent->end_at->lt(now()))) {
+                abort(422, 'Evento no disponible');
+            }
+
             if ($type->stock < $quantity) {
                 abort(422, 'No hay stock suficiente');
             }
 
             $type->decrement('stock', $quantity);
+            $type->refresh();
+            if ($type->stock <= 0 && $type->is_active) {
+                $type->update(['is_active' => false]);
+            }
 
             $tx = Transaction::create([
                 'user_id' => $user->id,

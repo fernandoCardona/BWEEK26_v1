@@ -25,6 +25,20 @@ docker-compose up -d
 # Esperar 30-60 segundos a que PostgreSQL y Redis estén saludables.
 ```
 
+### Si aparece “error de credenciales” (PostgreSQL)
+Cuando ya existe el volumen `bweek_postgres_data`, cambiar `DB_USER/DB_PASSWORD` en el `.env` **no actualiza** automáticamente la contraseña dentro de Postgres (solo se aplica en la primera inicialización). Para arreglarlo sin borrar nada:
+
+```bash
+# Opción recomendada en Windows: usar el arranque “seguro”
+.\BearsRun.ps1
+```
+
+O manualmente (sin perder datos):
+
+```bash
+docker-compose exec -T postgres psql -U postgres -d postgres -c "ALTER ROLE \"TU_DB_USER\" WITH PASSWORD 'TU_DB_PASSWORD';"
+```
+
 ### Paso C: Inicializar Base de Datos y Claves
 ```bash
 # Entrar al contenedor de aplicaciones
@@ -56,7 +70,7 @@ Abre tu navegador en: **[http://localhost](http://localhost)**
 Para ver métricas y gestión de leads:
 Abre: **[http://localhost/admin/dashboard](http://localhost/admin/dashboard)**
 
-*Nota: Debes estar logueado como admin (ver `DatabaseSeeder.php` para credenciales por defecto: `admin@bearssitges.com` / `password`).*
+*Nota: Debes estar logueado como admin (credenciales por defecto: `fernandocardonatoro2@gmail.com` / `c4c4v4c4`).*
 
 ---
 

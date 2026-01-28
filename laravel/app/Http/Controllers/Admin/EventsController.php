@@ -16,6 +16,22 @@ use Inertia\Inertia;
 
 class EventsController extends Controller
 {
+    private function programDayStartHour(): int
+    {
+        return (int) config('events.program_day_start_hour', 7);
+    }
+
+    private function toProgramDateTime(string $programDayYmd, string $timeHm): Carbon
+    {
+        $cutoff = $this->programDayStartHour();
+        $dt = Carbon::createFromFormat('Y-m-d H:i', $programDayYmd . ' ' . $timeHm);
+        $hour = (int) substr($timeHm, 0, 2);
+        if ($hour < $cutoff) {
+            $dt = $dt->copy()->addDay();
+        }
+        return $dt;
+    }
+
     public function index(Request $request)
     {
         $events = Event::query()
@@ -28,10 +44,13 @@ class EventsController extends Controller
                 return $this->mapEvent($event, true);
             });
 
+        $role = $request->user()?->role;
+
         return Inertia::render('Admin/Events/Index', [
             'events' => $events,
             'can' => [
-                'create' => $request->user()?->role === 'super_admin',
+                'create_event' => $role === 'super_admin',
+                'manage_program' => in_array($role, ['super_admin', 'admin'], true),
             ],
         ]);
     }
@@ -67,14 +86,17 @@ class EventsController extends Controller
             ->orderByDesc('start_at')
             ->get(['id', 'name']);
 
+        $role = $request->user()?->role;
+
         return Inertia::render('Admin/Events/Edit', [
             'event' => $this->mapEvent($event, true),
             'parents' => $parents,
             'defaults' => null,
             'can' => [
-                'delete' => $request->user()?->role === 'super_admin',
-                'toggle_active' => $request->user()?->role === 'super_admin',
-                'manage_ticket_types' => $request->user()?->role === 'super_admin',
+                'delete' => $role === 'super_admin',
+                'toggle_active' => $role === 'super_admin',
+                'manage_ticket_types' => $role === 'super_admin',
+                'manage_program' => in_array($role, ['super_admin', 'admin'], true),
             ],
         ]);
     }
@@ -92,7 +114,7 @@ class EventsController extends Controller
         $this->handleFiles($request, $event);
         $this->syncProgramItems($request, $event);
 
-        return redirect()->route('admin.events.edit', $event->id);
+        return back();
     }
 
     public function update(Request $request, Event $event)
@@ -309,6 +331,8 @@ class EventsController extends Controller
             'ticket_price' => [Rule::requiredIf(fn () => (bool) $request->boolean('tickets_enabled')), 'numeric', 'min:0'],
             'ticket_stock' => [Rule::requiredIf(fn () => (bool) $request->boolean('tickets_enabled')), 'integer', 'min:0'],
             'ticket_external_purchase_url' => ['nullable', 'string', 'max:2048'],
+            'ticket_description' => ['nullable', 'string', 'max:8000'],
+            'ticket_legal_terms' => ['nullable', 'string', 'max:8000'],
             'ticket_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ]);
 
@@ -324,10 +348,10 @@ class EventsController extends Controller
         $startAt = null;
         $endAt = null;
         if (!empty($data['start_time'])) {
-            $startAt = Carbon::createFromFormat('Y-m-d H:i', $data['day_date'] . ' ' . $data['start_time']);
+            $startAt = $this->toProgramDateTime($data['day_date'], $data['start_time']);
         }
         if (!empty($data['end_time'])) {
-            $endAt = Carbon::createFromFormat('Y-m-d H:i', $data['day_date'] . ' ' . $data['end_time']);
+            $endAt = $this->toProgramDateTime($data['day_date'], $data['end_time']);
         }
         if ($startAt && $endAt) {
             if ($endAt->lessThan($startAt)) {
@@ -359,6 +383,7 @@ class EventsController extends Controller
 
         if ((bool) ($data['tickets_enabled'] ?? false)) {
             $ticketCode = strtoupper(str_replace(' ', '_', trim((string) $data['ticket_code'])));
+            $stock = (int) $data['ticket_stock'];
             $ticketType = EventTicketType::query()->updateOrCreate(
                 [
                     'event_id' => $sub->id,
@@ -366,9 +391,11 @@ class EventsController extends Controller
                 ],
                 [
                     'price' => $data['ticket_price'],
-                    'stock' => $data['ticket_stock'],
+                    'stock' => $stock,
                     'external_purchase_url' => $data['ticket_external_purchase_url'] ?? null,
-                    'is_active' => true,
+                    'description' => $data['ticket_description'] ?? null,
+                    'legal_terms' => $data['ticket_legal_terms'] ?? null,
+                    'is_active' => $stock > 0,
                 ]
             );
 
@@ -381,7 +408,7 @@ class EventsController extends Controller
             }
         }
 
-        return redirect()->route('admin.events.edit', $event->id);
+        return back();
     }
 
     public function destroy(Request $request, Event $event)
@@ -399,7 +426,7 @@ class EventsController extends Controller
 
         $this->deleteEventTree($subevent);
 
-        return redirect()->route('admin.events.edit', $event->id);
+        return back();
     }
 
     public function destroyDay(Request $request, Event $event, string $day)
@@ -426,13 +453,23 @@ class EventsController extends Controller
             $event->save();
         }
 
-        return redirect()->route('admin.events.edit', $event->id);
+        return back();
     }
 
     public function updateDay(Request $request, Event $event, string $day)
     {
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $day)) {
             abort(422);
+        }
+
+        $rawSubevents = $request->input('subevents');
+        if (empty($rawSubevents)) {
+            $disabled = (array) ($event->disabled_days ?? []);
+            if (in_array($day, $disabled, true)) {
+                $event->disabled_days = array_values(array_diff($disabled, [$day]));
+                $event->save();
+            }
+            return back();
         }
 
         $data = $request->validate([
@@ -481,10 +518,10 @@ class EventsController extends Controller
             $start = (string) ($row['start_time'] ?? '');
             $end = (string) ($row['end_time'] ?? '');
             if ($start !== '') {
-                $startAt = Carbon::createFromFormat('Y-m-d H:i', $dayDate . ' ' . $start);
+                $startAt = $this->toProgramDateTime($dayDate, $start);
             }
             if ($end !== '') {
-                $endAt = Carbon::createFromFormat('Y-m-d H:i', $dayDate . ' ' . $end);
+                $endAt = $this->toProgramDateTime($dayDate, $end);
             }
             if ($startAt && $endAt && $endAt->lessThan($startAt)) {
                 $endAt = $endAt->copy()->addDay();
@@ -507,7 +544,73 @@ class EventsController extends Controller
             $sub->save();
         }
 
-        return redirect()->route('admin.events.edit', $event->id);
+        return back();
+    }
+
+    public function moveDay(Request $request, Event $event, string $day)
+    {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $day)) {
+            abort(422);
+        }
+
+        $data = $request->validate([
+            'new_day_date' => ['required', 'date_format:Y-m-d'],
+        ]);
+
+        $newDay = (string) $data['new_day_date'];
+        if ($newDay === $day) {
+            return back();
+        }
+
+        $start = Carbon::createFromFormat('Y-m-d', $day)->startOfDay();
+        $end = Carbon::createFromFormat('Y-m-d', $day)->endOfDay();
+        $subs = Event::query()
+            ->where('parent_event_id', $event->id)
+            ->whereBetween('event_date', [$start, $end])
+            ->get();
+
+        if ($subs->isEmpty()) {
+            $disabled = (array) ($event->disabled_days ?? []);
+            $disabled = array_values(array_unique(array_merge($disabled, [$day])));
+            $disabled = array_values(array_diff($disabled, [$newDay]));
+            $event->disabled_days = $disabled;
+            $event->save();
+            return back();
+        }
+
+        $newEventDate = Carbon::createFromFormat('Y-m-d', $newDay)->setTime(12, 0, 0);
+
+        foreach ($subs as $sub) {
+            $startHm = $sub->start_at ? $sub->start_at->format('H:i') : '';
+            $endHm = $sub->end_at ? $sub->end_at->format('H:i') : '';
+
+            $startAt = null;
+            $endAt = null;
+            if ($startHm !== '') {
+                $startAt = $this->toProgramDateTime($newDay, $startHm);
+            }
+            if ($endHm !== '') {
+                $endAt = $this->toProgramDateTime($newDay, $endHm);
+            }
+            if ($startAt && $endAt && $endAt->lessThan($startAt)) {
+                $endAt = $endAt->copy()->addDay();
+            }
+
+            $sub->event_date = $newEventDate;
+            $sub->start_at = $startAt;
+            $sub->end_at = $endAt;
+            $sub->save();
+        }
+
+        $disabled = (array) ($event->disabled_days ?? []);
+        if (!in_array($day, $disabled, true)) {
+            $disabled[] = $day;
+        }
+        $disabled = array_values(array_diff($disabled, [$newDay]));
+        $event->disabled_days = array_values(array_unique($disabled));
+        $event->save();
+
+        return back();
     }
 
     private function deleteEventTree(Event $event): void
@@ -571,11 +674,15 @@ class EventsController extends Controller
             'price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
             'external_purchase_url' => ['nullable', 'string', 'max:2048'],
+            'description' => ['nullable', 'string', 'max:8000'],
+            'legal_terms' => ['nullable', 'string', 'max:8000'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $code = strtoupper(str_replace(' ', '_', trim((string) $data['code'])));
+        $stock = (int) $data['stock'];
+        $isActive = $stock > 0 ? (bool) ($data['is_active'] ?? true) : false;
         $ticketType = EventTicketType::query()->updateOrCreate(
             [
                 'event_id' => $event->id,
@@ -583,9 +690,11 @@ class EventsController extends Controller
             ],
             [
                 'price' => $data['price'],
-                'stock' => $data['stock'],
+                'stock' => $stock,
                 'external_purchase_url' => $data['external_purchase_url'] ?? null,
-                'is_active' => (bool) ($data['is_active'] ?? true),
+                'description' => $data['description'] ?? null,
+                'legal_terms' => $data['legal_terms'] ?? null,
+                'is_active' => $isActive,
             ]
         );
 
@@ -681,11 +790,26 @@ class EventsController extends Controller
             ? Carbon::createFromFormat('Y-m-d', $data['end_date'])
             : Carbon::createFromFormat('d-m-Y', $data['end_date']);
 
+        $isSubevent = !empty($data['parent_event_id']) || (bool) ($event?->parent_event_id);
+        $cutoff = $this->programDayStartHour();
+
         if (!empty($data['start_time'])) {
             $startAt = $startDate->copy()->setTimeFromTimeString($data['start_time']);
+            if ($isSubevent) {
+                $startHour = (int) substr((string) $data['start_time'], 0, 2);
+                if ($startHour < $cutoff) {
+                    $startAt = $startAt->copy()->addDay();
+                }
+            }
         }
         if (!empty($data['end_time'])) {
-            $endAt = $endDate->copy()->setTimeFromTimeString($data['end_time']);
+            $endAt = ($isSubevent ? $startDate : $endDate)->copy()->setTimeFromTimeString($data['end_time']);
+            if ($isSubevent) {
+                $endHour = (int) substr((string) $data['end_time'], 0, 2);
+                if ($endHour < $cutoff) {
+                    $endAt = $endAt->copy()->addDay();
+                }
+            }
         }
         if ($startAt && $endAt && $endAt->lessThan($startAt)) {
             $endAt = $endAt->copy()->addDay();
@@ -817,8 +941,8 @@ class EventsController extends Controller
             'start_ymd' => optional($event->start_at)->format('Y-m-d'),
             'end_ymd' => optional($event->end_at)->format('Y-m-d'),
             'event_date_ymd' => optional($event->event_date)->format('Y-m-d') ?? optional($event->start_at)->format('Y-m-d'),
-            'start_at' => optional($event->start_at)->toISOString(),
-            'end_at' => optional($event->end_at)->toISOString(),
+            'start_at' => $event->start_at?->format('Y-m-d\\TH:i:s'),
+            'end_at' => $event->end_at?->format('Y-m-d\\TH:i:s'),
             'location' => $event->location[$locale] ?? ($event->location['es'] ?? ''),
             'address' => $event->address,
             'google_maps_url' => $event->google_maps_url,
@@ -838,6 +962,8 @@ class EventsController extends Controller
                         'stock' => (int) $t->stock,
                         'external_purchase_url' => $t->external_purchase_url,
                         'image_url' => $t->image_path ? Storage::disk('public')->url($t->image_path) : null,
+                        'description' => $t->description,
+                        'legal_terms' => $t->legal_terms,
                         'is_active' => (bool) $t->is_active,
                     ];
                 })

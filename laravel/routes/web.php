@@ -99,6 +99,11 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     })->name('admin.ecommerce.index');
     Route::get('/products', [AdminProductsController::class, 'index'])->name('admin.products.index');
     Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events.index');
+    Route::post('/events/{event}/subevents', [AdminEventsController::class, 'storeSubevent'])->name('admin.events.subevents.store');
+    Route::delete('/events/{event}/days/{day}', [AdminEventsController::class, 'destroyDay'])->name('admin.events.days.destroy');
+    Route::patch('/events/{event}/days/{day}', [AdminEventsController::class, 'updateDay'])->name('admin.events.days.update');
+    Route::patch('/events/{event}/days/{day}/move', [AdminEventsController::class, 'moveDay'])->name('admin.events.days.move');
+    Route::delete('/events/{event}/subevents/{subevent}', [AdminEventsController::class, 'destroySubevent'])->name('admin.events.subevents.destroy');
     Route::middleware([EnsureSuperAdmin::class])->group(function () {
         Route::get('/events/create', [AdminEventsController::class, 'create'])->name('admin.events.create');
         Route::post('/events', [AdminEventsController::class, 'store'])->name('admin.events.store');
@@ -117,10 +122,6 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
         Route::delete('/events/{event}/logo', [AdminEventsController::class, 'destroyEventLogo'])->name('admin.events.logo.destroy');
         Route::post('/events/{event}/flyer', [AdminEventsController::class, 'storeEventFlyer'])->name('admin.events.flyer.store');
         Route::delete('/events/{event}/flyer', [AdminEventsController::class, 'destroyEventFlyer'])->name('admin.events.flyer.destroy');
-        Route::post('/events/{event}/subevents', [AdminEventsController::class, 'storeSubevent'])->name('admin.events.subevents.store');
-        Route::delete('/events/{event}/days/{day}', [AdminEventsController::class, 'destroyDay'])->name('admin.events.days.destroy');
-        Route::patch('/events/{event}/days/{day}', [AdminEventsController::class, 'updateDay'])->name('admin.events.days.update');
-        Route::delete('/events/{event}/subevents/{subevent}', [AdminEventsController::class, 'destroySubevent'])->name('admin.events.subevents.destroy');
         Route::get('/products/create', [AdminProductsController::class, 'create'])->name('admin.products.create');
         Route::post('/products', [AdminProductsController::class, 'store'])->name('admin.products.store');
         Route::delete('/products/{product}', [AdminProductsController::class, 'destroy'])->name('admin.products.destroy');
