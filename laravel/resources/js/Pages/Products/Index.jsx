@@ -2,6 +2,8 @@ import React from 'react';
 import Layout from '@/Layouts/Layout';
 import Button from '@/Components/UI/Button';
 import { motion } from 'framer-motion';
+import { Link, router } from '@inertiajs/react';
+import axios from 'axios';
 
 export default function Index({ products }) {
     return (
@@ -24,6 +26,7 @@ export default function Index({ products }) {
                                 transition={{ delay: index * 0.1 }}
                                 className="glass-card group"
                             >
+                                <Link href={route('products.show', product.id)} className="block">
                                 <div className="aspect-square bg-white/5 rounded-2xl mb-6 overflow-hidden relative">
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                                     {/* Placeholder Image */}
@@ -34,6 +37,7 @@ export default function Index({ products }) {
                                         NUEVO
                                     </div>
                                 </div>
+                                </Link>
                                 <h3 className="text-2xl font-bold mb-2 group-hover:text-accent-primary transition-colors">
                                     {product.name.es || product.name}
                                 </h3>
@@ -42,7 +46,20 @@ export default function Index({ products }) {
                                 </p>
                                 <div className="flex items-center justify-between">
                                     <span className="text-2xl font-black text-white">{product.price}€</span>
-                                    <Button variant="secondary" className="px-6 py-2 text-sm">Añadir</Button>
+                                    <Button
+                                      variant="secondary"
+                                      className="px-6 py-2 text-sm"
+                                      onClick={async () => {
+                                        try {
+                                          await axios.post(route('cart.items.add'), { kind: 'product', product_id: product.id, quantity: 1 });
+                                          router.visit(route('cart.index'), { preserveScroll: true });
+                                        } catch (e) {
+                                          alert(e?.response?.data?.message ?? 'No se pudo añadir al carrito');
+                                        }
+                                      }}
+                                    >
+                                      Añadir
+                                    </Button>
                                 </div>
                             </motion.div>
                         )) : (

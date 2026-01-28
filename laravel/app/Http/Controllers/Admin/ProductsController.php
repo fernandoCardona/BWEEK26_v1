@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductImage;
+use App\Models\ProductCategory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -40,8 +41,10 @@ class ProductsController extends Controller
 
     public function create(Request $request)
     {
+        $categories = ProductCategory::query()->where('is_active', true)->orderBy('name')->get();
         return Inertia::render('Admin/Products/Edit', [
             'product' => null,
+            'categories' => $categories,
             'can' => [
                 'delete' => false,
                 'manage_stock' => true,
@@ -54,6 +57,7 @@ class ProductsController extends Controller
     {
         $locale = app()->getLocale();
         $role = $request->user()?->role;
+        $categories = ProductCategory::query()->where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('Admin/Products/Edit', [
             'product' => [
@@ -71,6 +75,7 @@ class ProductsController extends Controller
                     'sort_order' => $img->sort_order,
                 ]),
             ],
+            'categories' => $categories,
             'can' => [
                 'delete' => $role === 'super_admin',
                 'manage_stock' => $role === 'super_admin',
@@ -159,6 +164,16 @@ class ProductsController extends Controller
         $product->save();
     }
 
+    public function destroyMainImage(Request $request, Product $product)
+    {
+        if ($product->image_path) {
+            Storage::disk('public')->delete($product->image_path);
+            $product->image_path = null;
+            $product->save();
+        }
+        return response()->json(['status' => 'ok']);
+    }
+
     public function storeImage(Request $request, Product $product)
     {
         $data = $request->validate([
@@ -186,5 +201,14 @@ class ProductsController extends Controller
         Storage::disk('public')->delete($image->path);
         $image->delete();
         return response()->json(['status' => 'ok']);
+    }
+
+    public function storeCategory(Request $request)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+        ]);
+        $cat = ProductCategory::create(['name' => $data['name'], 'is_active' => true]);
+        return response()->json(['id' => $cat->id, 'name' => $cat->name, 'slug' => $cat->slug], 201);
     }
 }

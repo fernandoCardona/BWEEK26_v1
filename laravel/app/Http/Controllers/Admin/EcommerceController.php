@@ -10,8 +10,6 @@ class EcommerceController extends Controller
     public function index()
     {
         $tickets = \App\Models\EventTicketType::query()
-            ->where('is_active', true)
-            ->where('stock', '>', 0)
             ->with(['event:id,name,is_active'])
             ->orderBy('price')
             ->get();

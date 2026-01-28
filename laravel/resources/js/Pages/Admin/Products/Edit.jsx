@@ -13,6 +13,7 @@ export default function Edit({ product, can }) {
     const imageInputRef = useRef(null);
     const galleryInputRef = useRef(null);
     const [gallery, setGallery] = useState(product?.images ?? []);
+    const [primaryUrl, setPrimaryUrl] = useState(product?.image_url ?? null);
 
     const form = useForm({
         name: product?.name ?? '',
@@ -26,8 +27,8 @@ export default function Edit({ product, can }) {
 
     const imagePreview = useMemo(() => {
         if (form.data.image instanceof File) return URL.createObjectURL(form.data.image);
-        return product?.image_url ?? null;
-    }, [form.data.image, product?.image_url]);
+        return primaryUrl;
+    }, [form.data.image, primaryUrl]);
 
     const submit = (e) => {
         e.preventDefault();
@@ -85,7 +86,14 @@ export default function Edit({ product, can }) {
                                 previewUrl={imagePreview}
                                 onPick={() => imageInputRef.current?.click()}
                                 onDropFile={(f) => form.setData('image', f)}
-                                onRemove={() => form.setData('image', null)}
+                                onRemove={async () => {
+                                    if (form.data.image instanceof File) {
+                                        form.setData('image', null);
+                                    } else if (primaryUrl && product?.id) {
+                                        await axios.delete(route('admin.products.image.destroy', product.id));
+                                        setPrimaryUrl(null);
+                                    }
+                                }}
                                 variant="rect"
                                 boxClass="w-32 h-32"
                             />
@@ -100,7 +108,20 @@ export default function Edit({ product, can }) {
                             error={form.errors.description}
                         />
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <Field label="Categoría" value={form.data.category} onChange={(e) => form.setData('category', e.target.value)} error={form.errors.category} />
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Categoría</label>
+                                <select
+                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                    value={form.data.category}
+                                    onChange={(e) => form.setData('category', e.target.value)}
+                                >
+                                    <option value="">{'—'}</option>
+                                    {(window?.__inertia?.page?.props?.categories ?? []).map((c) => (
+                                        <option key={c.id} value={c.slug}>{c.name}</option>
+                                    ))}
+                                </select>
+                                {form.errors.category && <div className="text-xs text-red-400 mt-1">{form.errors.category}</div>}
+                            </div>
                             <Field label="Precio (€)" value={form.data.price} onChange={(e) => form.setData('price', e.target.value)} error={form.errors.price} />
                             <Field
                                 label="Stock"
