@@ -65,6 +65,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/events/{event}/purchase', [TicketController::class, 'purchase'])->name('tickets.purchase');
 });
 
+Route::get('/tickets', [TicketController::class, 'catalog'])->name('tickets.index');
 
 Route::middleware('auth')->group(function () {
     Route::get('/cart', [CartController::class, 'page'])->name('cart.index');

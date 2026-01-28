@@ -10,9 +10,22 @@ use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Services\TicketingService;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class TicketController extends Controller
 {
+    public function catalog()
+    {
+        $tickets = EventTicketType::query()
+            ->where('is_active', true)
+            ->where('stock', '>', 0)
+            ->with(['event:id,name,address,is_active'])
+            ->orderBy('price')
+            ->get();
+        return Inertia::render('Tickets/Index', [
+            'tickets' => $tickets,
+        ]);
+    }
     public function myTickets(Request $request): JsonResponse
     {
         return response()->json([
