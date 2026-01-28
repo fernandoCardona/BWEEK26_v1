@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\Event;
+use App\Models\EventTicketType;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
@@ -49,28 +51,48 @@ class CartController extends Controller
         }
 
         $data = $request->validate([
-            'product_id' => ['required', 'string', 'exists:products,id'],
+            'kind' => ['nullable', 'in:product,ticket'],
+            'product_id' => ['nullable', 'string', 'exists:products,id'],
+            'event_ticket_type_id' => ['nullable', 'string', 'exists:event_ticket_types,id'],
             'quantity' => ['required', 'integer', 'min:1', 'max:100'],
         ]);
 
         $cart = Cart::query()->firstOrCreate(['user_id' => $user->id], ['currency' => 'EUR']);
 
-        $product = Product::query()->where('id', $data['product_id'])->firstOrFail();
-        if (!$product->is_active) {
-            abort(422, 'Producto no disponible');
+        $kind = $data['kind'] ?? 'product';
+        if ($kind === 'product') {
+            $product = Product::query()->where('id', $data['product_id'])->firstOrFail();
+            if (!$product->is_active) {
+                abort(422, 'Producto no disponible');
+            }
+
+            $item = CartItem::query()->where('cart_id', $cart->id)->where('product_id', $product->id)->first();
+            $newQty = ($item?->quantity ?? 0) + (int) $data['quantity'];
+
+            if ($product->stock < $newQty) {
+                abort(422, 'No hay stock suficiente');
+            }
+
+            CartItem::query()->updateOrCreate(
+                ['cart_id' => $cart->id, 'product_id' => $product->id],
+                ['kind' => 'product', 'quantity' => $newQty, 'unit_price' => $product->price]
+            );
+        } else {
+            $type = EventTicketType::query()->where('id', $data['event_ticket_type_id'])->firstOrFail();
+            $event = Event::query()->where('id', $type->event_id)->firstOrFail();
+            if (!$type->is_active || !$event->is_active) {
+                abort(422, 'Ticket no disponible');
+            }
+            $item = CartItem::query()->where('cart_id', $cart->id)->where('event_ticket_type_id', $type->id)->first();
+            $newQty = ($item?->quantity ?? 0) + (int) $data['quantity'];
+            if ($type->stock < $newQty) {
+                abort(422, 'No hay stock suficiente para el ticket');
+            }
+            CartItem::query()->updateOrCreate(
+                ['cart_id' => $cart->id, 'event_ticket_type_id' => $type->id],
+                ['kind' => 'ticket', 'quantity' => $newQty, 'unit_price' => $type->price]
+            );
         }
-
-        $item = CartItem::query()->where('cart_id', $cart->id)->where('product_id', $product->id)->first();
-        $newQty = ($item?->quantity ?? 0) + (int) $data['quantity'];
-
-        if ($product->stock < $newQty) {
-            abort(422, 'No hay stock suficiente');
-        }
-
-        CartItem::query()->updateOrCreate(
-            ['cart_id' => $cart->id, 'product_id' => $product->id],
-            ['quantity' => $newQty, 'unit_price' => $product->price]
-        );
 
         return $this->show($request);
     }
@@ -97,18 +119,31 @@ class CartController extends Controller
             return $this->show($request);
         }
 
-        $product = Product::query()->where('id', $item->product_id)->firstOrFail();
-        if (!$product->is_active) {
-            abort(422, 'Producto no disponible');
+        if ($item->kind === 'product') {
+            $product = Product::query()->where('id', $item->product_id)->firstOrFail();
+            if (!$product->is_active) {
+                abort(422, 'Producto no disponible');
+            }
+            if ($product->stock < $qty) {
+                abort(422, 'No hay stock suficiente');
+            }
+            $item->update([
+                'quantity' => $qty,
+                'unit_price' => $product->price,
+            ]);
+        } else {
+            $type = EventTicketType::query()->where('id', $item->event_ticket_type_id)->firstOrFail();
+            if (!$type->is_active) {
+                abort(422, 'Ticket no disponible');
+            }
+            if ($type->stock < $qty) {
+                abort(422, 'No hay stock suficiente de tickets');
+            }
+            $item->update([
+                'quantity' => $qty,
+                'unit_price' => $type->price,
+            ]);
         }
-        if ($product->stock < $qty) {
-            abort(422, 'No hay stock suficiente');
-        }
-
-        $item->update([
-            'quantity' => $qty,
-            'unit_price' => $product->price,
-        ]);
 
         return $this->show($request);
     }

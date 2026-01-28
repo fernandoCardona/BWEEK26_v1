@@ -14,8 +14,10 @@ class CartItem extends Model
 
     protected $fillable = [
         'id',
+        'kind',
         'cart_id',
         'product_id',
+        'event_ticket_type_id',
         'quantity',
         'unit_price',
     ];
@@ -44,5 +46,9 @@ class CartItem extends Model
     {
         return $this->belongsTo(Product::class);
     }
-}
 
+    public function ticketType()
+    {
+        return $this->belongsTo(EventTicketType::class, 'event_ticket_type_id');
+    }
+}

@@ -28,33 +28,64 @@ class CheckoutController extends Controller
             abort(422, 'El carrito está vacío');
         }
 
-        $productIds = $items->pluck('product_id')->unique()->values();
+        $productIds = $items->where('kind', 'product')->pluck('product_id')->unique()->values();
+        $ticketTypeIds = $items->where('kind', 'ticket')->pluck('event_ticket_type_id')->unique()->values();
         $products = Product::query()->whereIn('id', $productIds)->get()->keyBy('id');
+        $ticketTypes = \App\Models\EventTicketType::query()->whereIn('id', $ticketTypeIds)->get()->keyBy('id');
+        $events = \App\Models\Event::query()->whereIn('id', $ticketTypes->pluck('event_id')->unique())->get()->keyBy('id');
 
         $lineItems = [];
         $total = 0.0;
         foreach ($items as $item) {
-            $p = $products->get($item->product_id);
-            if (!$p || !$p->is_active) {
-                abort(422, 'Producto no disponible');
-            }
-            if ($p->stock < $item->quantity) {
-                abort(422, 'No hay stock suficiente');
-            }
-            $unit = (float) ($p->price);
-            $qty = (int) ($item->quantity);
-            $total += $unit * $qty;
-            $name = $p->getTranslation('name', app()->getLocale()) ?? 'Producto';
-            $lineItems[] = [
-                'price_data' => [
-                    'currency' => strtolower($cart->currency ?? 'EUR'),
-                    'product_data' => [
-                        'name' => $name,
+            if ($item->kind === 'product') {
+                $p = $products->get($item->product_id);
+                if (!$p || !$p->is_active) {
+                    abort(422, 'Producto no disponible');
+                }
+                if ($p->stock < $item->quantity) {
+                    abort(422, 'No hay stock suficiente');
+                }
+                $unit = (float) ($p->price);
+                $qty = (int) ($item->quantity);
+                $total += $unit * $qty;
+                $name = $p->getTranslation('name', app()->getLocale()) ?? 'Producto';
+                $lineItems[] = [
+                    'price_data' => [
+                        'currency' => strtolower($cart->currency ?? 'EUR'),
+                        'product_data' => [
+                            'name' => $name,
+                        ],
+                        'unit_amount' => (int) round($unit * 100),
                     ],
-                    'unit_amount' => (int) round($unit * 100),
-                ],
-                'quantity' => $qty,
-            ];
+                    'quantity' => $qty,
+                ];
+            } else {
+                $type = $ticketTypes->get($item->event_ticket_type_id);
+                if (!$type || !$type->is_active) {
+                    abort(422, 'Ticket no disponible');
+                }
+                $ev = $events->get($type->event_id);
+                if (!$ev || !$ev->is_active) {
+                    abort(422, 'Evento no disponible');
+                }
+                if ($type->stock < $item->quantity) {
+                    abort(422, 'No hay stock suficiente de tickets');
+                }
+                $unit = (float) ($type->price);
+                $qty = (int) ($item->quantity);
+                $total += $unit * $qty;
+                $name = strtoupper($type->code) . ' • ' . ($ev->name['es'] ?? $ev->name['en'] ?? 'Evento');
+                $lineItems[] = [
+                    'price_data' => [
+                        'currency' => strtolower($cart->currency ?? 'EUR'),
+                        'product_data' => [
+                            'name' => $name,
+                        ],
+                        'unit_amount' => (int) round($unit * 100),
+                    ],
+                    'quantity' => $qty,
+                ];
+            }
         }
 
         $tx = Transaction::create([
@@ -144,27 +175,60 @@ class CheckoutController extends Controller
                 return;
             }
             $items = CartItem::query()->where('cart_id', $cartId)->get();
-            $productIds = $items->pluck('product_id')->unique()->values();
+            $productIds = $items->where('kind', 'product')->pluck('product_id')->unique()->values();
+            $ticketTypeIds = $items->where('kind', 'ticket')->pluck('event_ticket_type_id')->unique()->values();
             $products = Product::query()->whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
+            $ticketTypes = \App\Models\EventTicketType::query()->whereIn('id', $ticketTypeIds)->lockForUpdate()->get()->keyBy('id');
+            $events = \App\Models\Event::query()->whereIn('id', $ticketTypes->pluck('event_id')->unique())->get()->keyBy('id');
             foreach ($items as $item) {
-                $p = $products->get($item->product_id);
-                if (!$p || !$p->is_active) {
-                    continue;
+                if ($item->kind === 'product') {
+                    $p = $products->get($item->product_id);
+                    if (!$p || !$p->is_active) {
+                        continue;
+                    }
+                    $qty = (int) $item->quantity;
+                    if ($p->stock < $qty) {
+                        continue;
+                    }
+                    $p->decrement('stock', $qty);
+                    TransactionItem::create([
+                        'transaction_id' => $tx->id,
+                        'kind' => 'product',
+                        'product_id' => $p->id,
+                        'title' => $p->getTranslation('name', app()->getLocale()) ?? null,
+                        'quantity' => $qty,
+                        'unit_price' => (float) $p->price,
+                        'total_price' => round(((float) $p->price) * $qty, 2),
+                    ]);
+                } else {
+                    $type = $ticketTypes->get($item->event_ticket_type_id);
+                    $ev = $type ? $events->get($type->event_id) : null;
+                    if (!$type || !$ev) {
+                        continue;
+                    }
+                    $qty = (int) $item->quantity;
+                    if ($type->stock < $qty) {
+                        continue;
+                    }
+                    $type->decrement('stock', $qty);
+                    for ($i = 0; $i < $qty; $i++) {
+                        $ticket = app(\App\Services\TicketingService::class)->issueTicket($tx->user, $ev, $type->code, (float) $type->price, $type->id);
+                        $ticket->update(['transaction_id' => $tx->id]);
+                        TransactionItem::create([
+                            'transaction_id' => $tx->id,
+                            'kind' => 'ticket',
+                            'ticket_id' => $ticket->id,
+                            'title' => strtoupper($type->code),
+                            'quantity' => 1,
+                            'unit_price' => (float) $type->price,
+                            'total_price' => (float) $type->price,
+                            'meta' => [
+                                'event_id' => $ev->id,
+                                'ticket_type_id' => $type->id,
+                            ],
+                        ]);
+                    }
                 }
-                $qty = (int) $item->quantity;
-                if ($p->stock < $qty) {
-                    continue;
-                }
-                $p->decrement('stock', $qty);
-                TransactionItem::create([
-                    'transaction_id' => $tx->id,
-                    'kind' => 'product',
-                    'product_id' => $p->id,
-                    'title' => $p->getTranslation('name', app()->getLocale()) ?? null,
-                    'quantity' => $qty,
-                    'unit_price' => (float) $p->price,
-                    'total_price' => round(((float) $p->price) * $qty, 2),
-                ]);
             }
             CartItem::query()->where('cart_id', $cartId)->delete();
             $tx->update(['status' => 'completed']);
@@ -206,4 +270,3 @@ class CheckoutController extends Controller
         return hash_equals($expected, $v1);
     }
 }
-
