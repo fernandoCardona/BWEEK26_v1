@@ -2,6 +2,8 @@ import React, { useMemo, useRef, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Link, router, useForm } from '@inertiajs/react';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
+import axios from 'axios';
+import { FiPlus, FiTrash2 } from 'react-icons/fi';
 
 export default function Edit({ product, can }) {
     const isCreate = !product;
@@ -9,6 +11,8 @@ export default function Edit({ product, can }) {
     useLockBodyScroll(confirmDeleteOpen);
 
     const imageInputRef = useRef(null);
+    const galleryInputRef = useRef(null);
+    const [gallery, setGallery] = useState(product?.images ?? []);
 
     const form = useForm({
         name: product?.name ?? '',
@@ -39,6 +43,18 @@ export default function Edit({ product, can }) {
         router.delete(route('admin.products.destroy', product.id));
     };
 
+    const uploadGalleryImage = async (file) => {
+        const fd = new FormData();
+        fd.append('image', file);
+        const res = await axios.post(route('admin.products.images.store', product.id), fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+        setGallery((prev) => [...prev, res.data]);
+    };
+
+    const deleteGalleryImage = async (imageId) => {
+        await axios.delete(route('admin.products.images.destroy', [product.id, imageId]));
+        setGallery((prev) => prev.filter((g) => g.id !== imageId));
+    };
+
     return (
         <AdminLayout active="ecommerce" headTitle={`Admin • ${isCreate ? 'Crear producto' : 'Editar producto'}`}>
             <div className="max-w-4xl">
@@ -65,27 +81,15 @@ export default function Edit({ product, can }) {
                         <div>
                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Imagen</label>
                             <input ref={imageInputRef} type="file" className="hidden" onChange={(e) => form.setData('image', e.target.files?.[0] ?? null)} />
-                            <div className="flex items-center gap-6">
-                                <div className="w-32 h-32 rounded-3xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
-                                    {imagePreview ? <img src={imagePreview} alt="Imagen" className="w-full h-full object-cover" /> : <span className="text-xs text-gray-500">Sin</span>}
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                                        <button
-                                            type="button"
-                                            className="btn-secondary px-6 py-3 text-sm"
-                                            disabled={!can?.toggle_active}
-                                            onClick={() => imageInputRef.current?.click()}
-                                        >
-                                            Seleccionar archivo
-                                        </button>
-                                        <span className="text-sm text-gray-300 truncate">
-                                            {form.data.image?.name ? form.data.image.name : product?.image_url ? 'Imagen cargada' : 'Ningún archivo seleccionado'}
-                                        </span>
-                                    </div>
-                                    {form.errors.image && <div className="text-xs text-red-400 mt-2">{form.errors.image}</div>}
-                                </div>
-                            </div>
+                            <ImageBox
+                                previewUrl={imagePreview}
+                                onPick={() => imageInputRef.current?.click()}
+                                onDropFile={(f) => form.setData('image', f)}
+                                onRemove={() => form.setData('image', null)}
+                                variant="rect"
+                                boxClass="w-32 h-32"
+                            />
+                            {form.errors.image && <div className="text-xs text-red-400 mt-2">{form.errors.image}</div>}
                         </div>
 
                         <Field label="Nombre" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} error={form.errors.name} />
@@ -106,6 +110,31 @@ export default function Edit({ product, can }) {
                                 disabled={!can?.manage_stock}
                             />
                         </div>
+
+                        {!isCreate && (
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Galería</label>
+                                <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => uploadGalleryImage(e.target.files?.[0])} />
+                                <div className="flex items-center gap-4 flex-wrap">
+                                    <ImageBox
+                                        previewUrl={null}
+                                        onPick={() => galleryInputRef.current?.click()}
+                                        onDropFile={(f) => uploadGalleryImage(f)}
+                                        variant="rect"
+                                    />
+                                    {gallery.map((img) => (
+                                        <ImageBox
+                                            key={img.id}
+                                            previewUrl={img.url}
+                                            onPick={() => {}}
+                                            onDropFile={() => {}}
+                                            onRemove={() => deleteGalleryImage(img.id)}
+                                            variant="rect"
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <label className="inline-flex items-center gap-3 text-sm text-gray-300 select-none">
                             <span className="text-xs text-gray-400">{form.data.is_active ? 'Activo' : 'Inactivo'}</span>
@@ -188,3 +217,49 @@ function TextArea({ label, value, onChange, error }) {
     );
 }
 
+function ImageBox({ previewUrl, onPick, onRemove, onDropFile, variant = 'square', boxClass }) {
+    const [dragOver, setDragOver] = useState(false);
+    const defaultBoxClass = variant === 'rect' ? 'w-28 h-20 rounded-2xl' : 'w-28 h-28 rounded-2xl';
+    const effectiveBoxClass = boxClass || defaultBoxClass;
+    const imgClass = variant === 'rect' ? 'w-full h-full object-cover' : 'w-full h-full object-contain';
+    return (
+        <div
+            className={`relative ${effectiveBoxClass} border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center cursor-pointer group ${
+                dragOver ? 'ring-2 ring-accent-primary/60 border-accent-primary/40' : ''
+            }`}
+            onClick={onPick}
+            onDragEnter={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+            }}
+            onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const f = e.dataTransfer?.files?.[0] ?? null;
+                if (!f) return;
+                if (f.type && !String(f.type).startsWith('image/')) return;
+                onDropFile?.(f);
+            }}
+        >
+            {previewUrl ? <img src={previewUrl} alt="Imagen" className={imgClass} /> : <FiPlus size={22} className="text-gray-500" />}
+            {previewUrl ? (
+                <button
+                    type="button"
+                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onRemove?.();
+                    }}
+                    aria-label="Eliminar imagen"
+                >
+                    <FiTrash2 size={22} className="text-white" />
+                </button>
+            ) : null}
+        </div>
+    );
+}

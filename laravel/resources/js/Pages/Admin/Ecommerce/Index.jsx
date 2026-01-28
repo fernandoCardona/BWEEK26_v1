@@ -20,7 +20,8 @@ export default function Index({ tickets = [], products = [] }) {
                     <p className="font-bold text-sm truncate">{(t.code || 'TICKET').toUpperCase()} • {t.event?.name?.es ?? t.event?.name?.en ?? 'Evento'}</p>
                     <p className="text-xs text-gray-500">{t.price}€ • stock {t.stock ?? '-'}</p>
                   </div>
-                  <div className="text-right">
+                  <div className="flex items-center gap-3">
+                    <Link href={route('admin.events.edit', t.event?.id)} className="btn-secondary px-4 py-2 text-sm">Editar</Link>
                     <span className="text-[10px] uppercase tracking-widest text-gray-500">activo</span>
                   </div>
                 </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\ProductImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
@@ -64,6 +65,11 @@ class ProductsController extends Controller
                 'stock' => (int) $product->stock,
                 'is_active' => (bool) $product->is_active,
                 'image_url' => $product->image_path ? Storage::disk('public')->url($product->image_path) : null,
+                'images' => $product->images()->get()->map(fn (ProductImage $img) => [
+                    'id' => $img->id,
+                    'url' => Storage::disk('public')->url($img->path),
+                    'sort_order' => $img->sort_order,
+                ]),
             ],
             'can' => [
                 'delete' => $role === 'super_admin',
@@ -151,5 +157,34 @@ class ProductsController extends Controller
 
         $product->image_path = $request->file('image')->store('products', 'public');
         $product->save();
+    }
+
+    public function storeImage(Request $request, Product $product)
+    {
+        $data = $request->validate([
+            'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+        ]);
+        $path = $request->file('image')->store('products', 'public');
+        $order = (int) ($product->images()->max('sort_order') ?? 0) + 1;
+        $image = ProductImage::create([
+            'product_id' => $product->id,
+            'path' => $path,
+            'sort_order' => $order,
+        ]);
+        return response()->json([
+            'id' => $image->id,
+            'url' => Storage::disk('public')->url($image->path),
+            'sort_order' => $image->sort_order,
+        ], 201);
+    }
+
+    public function destroyImage(Request $request, Product $product, ProductImage $image)
+    {
+        if ($image->product_id !== $product->id) {
+            abort(404);
+        }
+        Storage::disk('public')->delete($image->path);
+        $image->delete();
+        return response()->json(['status' => 'ok']);
     }
 }

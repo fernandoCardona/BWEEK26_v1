@@ -131,6 +131,8 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     });
     Route::get('/products/{product}', [AdminProductsController::class, 'edit'])->name('admin.products.edit');
     Route::patch('/products/{product}', [AdminProductsController::class, 'update'])->name('admin.products.update');
+    Route::post('/products/{product}/images', [AdminProductsController::class, 'storeImage'])->name('admin.products.images.store');
+    Route::delete('/products/{product}/images/{image}', [AdminProductsController::class, 'destroyImage'])->name('admin.products.images.destroy');
     Route::get('/events/{event}', [AdminEventsController::class, 'edit'])->name('admin.events.edit');
     Route::patch('/events/{event}', [AdminEventsController::class, 'update'])->name('admin.events.update');
     Route::get('/marketing', function () {
