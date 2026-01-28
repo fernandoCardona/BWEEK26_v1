@@ -53,6 +53,7 @@ class CartController extends Controller
         $data = $request->validate([
             'kind' => ['nullable', 'in:product,ticket'],
             'product_id' => ['nullable', 'string', 'exists:products,id'],
+            'product_variant_id' => ['nullable', 'string', 'exists:product_variants,id'],
             'event_ticket_type_id' => ['nullable', 'string', 'exists:event_ticket_types,id'],
             'quantity' => ['required', 'integer', 'min:1', 'max:100'],
         ]);
@@ -61,22 +62,37 @@ class CartController extends Controller
 
         $kind = $data['kind'] ?? 'product';
         if ($kind === 'product') {
-            $product = Product::query()->where('id', $data['product_id'])->firstOrFail();
-            if (!$product->is_active) {
-                abort(422, 'Producto no disponible');
+            $variantId = $data['product_variant_id'] ?? null;
+            if ($variantId) {
+                $variant = \App\Models\ProductVariant::query()->where('id', $variantId)->firstOrFail();
+                $product = Product::query()->where('id', $variant->product_id)->firstOrFail();
+                if (!$variant->is_active || !$product->is_active) {
+                    abort(422, 'Variante no disponible');
+                }
+                $item = CartItem::query()->where('cart_id', $cart->id)->where('product_variant_id', $variant->id)->first();
+                $newQty = ($item?->quantity ?? 0) + (int) $data['quantity'];
+                if ($variant->stock < $newQty) {
+                    abort(422, 'No hay stock suficiente para la talla seleccionada');
+                }
+                CartItem::query()->updateOrCreate(
+                    ['cart_id' => $cart->id, 'product_variant_id' => $variant->id],
+                    ['kind' => 'product', 'quantity' => $newQty, 'unit_price' => $variant->price]
+                );
+            } else {
+                $product = Product::query()->where('id', $data['product_id'])->firstOrFail();
+                if (!$product->is_active) {
+                    abort(422, 'Producto no disponible');
+                }
+                $item = CartItem::query()->where('cart_id', $cart->id)->where('product_id', $product->id)->first();
+                $newQty = ($item?->quantity ?? 0) + (int) $data['quantity'];
+                if ($product->stock < $newQty) {
+                    abort(422, 'No hay stock suficiente');
+                }
+                CartItem::query()->updateOrCreate(
+                    ['cart_id' => $cart->id, 'product_id' => $product->id],
+                    ['kind' => 'product', 'quantity' => $newQty, 'unit_price' => $product->price]
+                );
             }
-
-            $item = CartItem::query()->where('cart_id', $cart->id)->where('product_id', $product->id)->first();
-            $newQty = ($item?->quantity ?? 0) + (int) $data['quantity'];
-
-            if ($product->stock < $newQty) {
-                abort(422, 'No hay stock suficiente');
-            }
-
-            CartItem::query()->updateOrCreate(
-                ['cart_id' => $cart->id, 'product_id' => $product->id],
-                ['kind' => 'product', 'quantity' => $newQty, 'unit_price' => $product->price]
-            );
         } else {
             $type = EventTicketType::query()->where('id', $data['event_ticket_type_id'])->firstOrFail();
             $event = Event::query()->where('id', $type->event_id)->firstOrFail();
@@ -120,17 +136,31 @@ class CartController extends Controller
         }
 
         if ($item->kind === 'product') {
-            $product = Product::query()->where('id', $item->product_id)->firstOrFail();
-            if (!$product->is_active) {
-                abort(422, 'Producto no disponible');
+            if ($item->product_variant_id) {
+                $variant = \App\Models\ProductVariant::query()->where('id', $item->product_variant_id)->firstOrFail();
+                if (!$variant->is_active) {
+                    abort(422, 'Variante no disponible');
+                }
+                if ($variant->stock < $qty) {
+                    abort(422, 'No hay stock suficiente para la talla seleccionada');
+                }
+                $item->update([
+                    'quantity' => $qty,
+                    'unit_price' => $variant->price,
+                ]);
+            } else {
+                $product = Product::query()->where('id', $item->product_id)->firstOrFail();
+                if (!$product->is_active) {
+                    abort(422, 'Producto no disponible');
+                }
+                if ($product->stock < $qty) {
+                    abort(422, 'No hay stock suficiente');
+                }
+                $item->update([
+                    'quantity' => $qty,
+                    'unit_price' => $product->price,
+                ]);
             }
-            if ($product->stock < $qty) {
-                abort(422, 'No hay stock suficiente');
-            }
-            $item->update([
-                'quantity' => $qty,
-                'unit_price' => $product->price,
-            ]);
         } else {
             $type = EventTicketType::query()->where('id', $item->event_ticket_type_id)->firstOrFail();
             if (!$type->is_active) {
@@ -238,6 +268,7 @@ class CartController extends Controller
             'items.product:id,name,price,stock,is_active',
             'items.ticketType:id,event_id,code,price,stock,is_active',
             'items.ticketType.event:id,name,address,is_active',
+            'items.productVariant:id,product_id,sku,size,color,price,stock,is_active',
         ]);
 
         return [
@@ -257,6 +288,15 @@ class CartController extends Controller
                         'price' => (string) $item->product->price,
                         'stock' => (int) $item->product->stock,
                         'is_active' => (bool) $item->product->is_active,
+                    ] : null,
+                    'product_variant' => $item->productVariant ? [
+                        'id' => $item->productVariant->id,
+                        'sku' => $item->productVariant->sku,
+                        'size' => $item->productVariant->size,
+                        'color' => $item->productVariant->color,
+                        'price' => (string) $item->productVariant->price,
+                        'stock' => (int) $item->productVariant->stock,
+                        'is_active' => (bool) $item->productVariant->is_active,
                     ] : null,
                     'ticket_type' => $item->ticketType ? [
                         'id' => $item->ticketType->id,

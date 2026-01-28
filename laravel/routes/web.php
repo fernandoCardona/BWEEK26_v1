@@ -11,6 +11,7 @@ use App\Http\Controllers\ChatbotWebController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\Admin\EcommerceController as AdminEcommerceController;
 use App\Http\Controllers\Admin\UsersController as AdminUsersController;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureSuperAdmin;
@@ -97,9 +98,8 @@ Route::middleware('auth')->group(function () {
 
 Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function () {
     Route::get('/dashboard', AdminDashboardController::class)->name('admin.dashboard');
-    Route::get('/ecommerce', function () {
-        return redirect()->route('admin.dashboard');
-    })->name('admin.ecommerce.index');
+    Route::get('/ecommerce', [AdminEcommerceController::class, 'index'])->name('admin.ecommerce.index');
+    Route::get('/ecommerce/warehouse', [AdminEcommerceController::class, 'warehouse'])->name('admin.ecommerce.warehouse');
     Route::get('/products', [AdminProductsController::class, 'index'])->name('admin.products.index');
     Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events.index');
     Route::post('/events/{event}/subevents', [AdminEventsController::class, 'storeSubevent'])->name('admin.events.subevents.store');

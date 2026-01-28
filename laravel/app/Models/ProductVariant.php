@@ -5,27 +5,30 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class CartItem extends Model
+class ProductVariant extends Model
 {
-    protected $table = 'cart_items';
+    protected $table = 'product_variants';
 
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
-        'kind',
-        'cart_id',
         'product_id',
-        'product_variant_id',
-        'event_ticket_type_id',
-        'quantity',
-        'unit_price',
+        'sku',
+        'size',
+        'color',
+        'price',
+        'stock',
+        'is_active',
+        'image_path',
     ];
 
     protected $casts = [
         'id' => 'string',
-        'unit_price' => 'decimal:2',
+        'price' => 'decimal:2',
+        'stock' => 'integer',
+        'is_active' => 'boolean',
     ];
 
     protected static function boot()
@@ -38,23 +41,8 @@ class CartItem extends Model
         });
     }
 
-    public function cart()
-    {
-        return $this->belongsTo(Cart::class);
-    }
-
     public function product()
     {
         return $this->belongsTo(Product::class);
-    }
-
-    public function ticketType()
-    {
-        return $this->belongsTo(EventTicketType::class, 'event_ticket_type_id');
-    }
-
-    public function productVariant()
-    {
-        return $this->belongsTo(ProductVariant::class, 'product_variant_id');
     }
 }

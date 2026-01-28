@@ -9,6 +9,32 @@ class EcommerceController extends Controller
 {
     public function index()
     {
-        return Inertia::render('Admin/Ecommerce/Index');
+        $tickets = \App\Models\EventTicketType::query()
+            ->where('is_active', true)
+            ->where('stock', '>', 0)
+            ->with(['event:id,name,is_active'])
+            ->orderBy('price')
+            ->get();
+
+        $products = \App\Models\Product::query()
+            ->where('is_active', true)
+            ->withCount('variants')
+            ->get();
+
+        return Inertia::render('Admin/Ecommerce/Index', [
+            'tickets' => $tickets,
+            'products' => $products,
+        ]);
+    }
+
+    public function warehouse()
+    {
+        $products = \App\Models\Product::query()
+            ->with(['variants'])
+            ->orderBy('name->es')
+            ->get();
+        return Inertia::render('Admin/Ecommerce/Warehouse', [
+            'products' => $products,
+        ]);
     }
 }
