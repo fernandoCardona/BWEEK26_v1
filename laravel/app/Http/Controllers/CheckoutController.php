@@ -232,6 +232,14 @@ class CheckoutController extends Controller
             }
             CartItem::query()->where('cart_id', $cartId)->delete();
             $tx->update(['status' => 'completed']);
+            // Send tickets email if any ticket in order
+            if ($items->where('kind', 'ticket')->count() > 0) {
+                try {
+                    \Illuminate\Support\Facades\Mail::to($tx->user)->send(new \App\Mail\TicketOrderMail($tx));
+                } catch (\Throwable $e) {
+                    // swallow mail errors to not break webhook processing
+                }
+            }
         });
     }
 
