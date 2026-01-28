@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ProductsController as AdminProductsController;
 use App\Http\Controllers\ChatbotWebController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\TicketController;
+use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Admin\UsersController as AdminUsersController;
 use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\EnsureSuperAdmin;
@@ -72,6 +73,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/cart/items/{item}', [CartController::class, 'updateItem'])->name('cart.items.update');
     Route::delete('/cart/items/{item}', [CartController::class, 'removeItem'])->name('cart.items.remove');
     Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
+    Route::post('/checkout/stripe', [CheckoutController::class, 'createStripeCheckout'])->name('checkout.stripe');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -161,3 +163,8 @@ Route::get('/{slug}', [PageController::class, 'show'])
     ->name('pages.show');
 
 require __DIR__ . '/auth.php';
+
+Route::post('/webhooks/stripe', [CheckoutController::class, 'stripeWebhook'])->name('webhooks.stripe');
+Route::get('/checkout/success', function (\Illuminate\Http\Request $request) {
+    return view('checkout-success', ['session_id' => $request->get('session_id')]);
+})->name('checkout.success');
