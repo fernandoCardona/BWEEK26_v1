@@ -129,6 +129,9 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
         Route::post('/products', [AdminProductsController::class, 'store'])->name('admin.products.store');
         Route::delete('/products/{product}', [AdminProductsController::class, 'destroy'])->name('admin.products.destroy');
     Route::post('/products/categories', [AdminProductsController::class, 'storeCategory'])->name('admin.products.categories.store');
+    Route::post('/products/{product}/variants', [AdminProductsController::class, 'storeVariant'])->name('admin.products.variants.store');
+    Route::patch('/products/{product}/variants/{variant}', [AdminProductsController::class, 'updateVariant'])->name('admin.products.variants.update');
+    Route::delete('/products/{product}/variants/{variant}', [AdminProductsController::class, 'destroyVariant'])->name('admin.products.variants.destroy');
     });
     Route::get('/products/{product}', [AdminProductsController::class, 'edit'])->name('admin.products.edit');
     Route::patch('/products/{product}', [AdminProductsController::class, 'update'])->name('admin.products.update');

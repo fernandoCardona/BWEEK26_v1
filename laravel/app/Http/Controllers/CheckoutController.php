@@ -31,6 +31,8 @@ class CheckoutController extends Controller
         $productIds = $items->where('kind', 'product')->pluck('product_id')->unique()->values();
         $ticketTypeIds = $items->where('kind', 'ticket')->pluck('event_ticket_type_id')->unique()->values();
         $products = Product::query()->whereIn('id', $productIds)->get()->keyBy('id');
+        $variantIds = $items->where('kind', 'product')->pluck('product_variant_id')->filter()->unique()->values();
+        $variants = \App\Models\ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
         $ticketTypes = \App\Models\EventTicketType::query()->whereIn('id', $ticketTypeIds)->get()->keyBy('id');
         $events = \App\Models\Event::query()->whereIn('id', $ticketTypes->pluck('event_id')->unique())->get()->keyBy('id');
 
@@ -38,27 +40,53 @@ class CheckoutController extends Controller
         $total = 0.0;
         foreach ($items as $item) {
             if ($item->kind === 'product') {
-                $p = $products->get($item->product_id);
-                if (!$p || !$p->is_active) {
-                    abort(422, 'Producto no disponible');
-                }
-                if ($p->stock < $item->quantity) {
-                    abort(422, 'No hay stock suficiente');
-                }
-                $unit = (float) ($p->price);
-                $qty = (int) ($item->quantity);
-                $total += $unit * $qty;
-                $name = $p->getTranslation('name', app()->getLocale()) ?? 'Producto';
-                $lineItems[] = [
-                    'price_data' => [
-                        'currency' => strtolower($cart->currency ?? 'EUR'),
-                        'product_data' => [
-                            'name' => $name,
+                if ($item->product_variant_id) {
+                    $v = $variants->get($item->product_variant_id);
+                    $p = $v ? $products->get($v->product_id) : null;
+                    if (!$v || !$p || !$v->is_active || !$p->is_active) {
+                        abort(422, 'Variante no disponible');
+                    }
+                    if ($v->stock < $item->quantity) {
+                        abort(422, 'No hay stock suficiente para la talla/color seleccionados');
+                    }
+                    $unit = (float) ($v->price);
+                    $qty = (int) ($item->quantity);
+                    $total += $unit * $qty;
+                    $nameBase = $p->getTranslation('name', app()->getLocale()) ?? 'Producto';
+                    $name = "{$nameBase} • {$v->size}" . ($v->color ? " • {$v->color}" : '');
+                    $lineItems[] = [
+                        'price_data' => [
+                            'currency' => strtolower($cart->currency ?? 'EUR'),
+                            'product_data' => [
+                                'name' => $name,
+                            ],
+                            'unit_amount' => (int) round($unit * 100),
                         ],
-                        'unit_amount' => (int) round($unit * 100),
-                    ],
-                    'quantity' => $qty,
-                ];
+                        'quantity' => $qty,
+                    ];
+                } else {
+                    $p = $products->get($item->product_id);
+                    if (!$p || !$p->is_active) {
+                        abort(422, 'Producto no disponible');
+                    }
+                    if ($p->stock < $item->quantity) {
+                        abort(422, 'No hay stock suficiente');
+                    }
+                    $unit = (float) ($p->price);
+                    $qty = (int) ($item->quantity);
+                    $total += $unit * $qty;
+                    $name = $p->getTranslation('name', app()->getLocale()) ?? 'Producto';
+                    $lineItems[] = [
+                        'price_data' => [
+                            'currency' => strtolower($cart->currency ?? 'EUR'),
+                            'product_data' => [
+                                'name' => $name,
+                            ],
+                            'unit_amount' => (int) round($unit * 100),
+                        ],
+                        'quantity' => $qty,
+                    ];
+                }
             } else {
                 $type = $ticketTypes->get($item->event_ticket_type_id);
                 if (!$type || !$type->is_active) {
@@ -178,28 +206,55 @@ class CheckoutController extends Controller
             $productIds = $items->where('kind', 'product')->pluck('product_id')->unique()->values();
             $ticketTypeIds = $items->where('kind', 'ticket')->pluck('event_ticket_type_id')->unique()->values();
             $products = Product::query()->whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
+            $variantIds = $items->where('kind', 'product')->pluck('product_variant_id')->filter()->unique()->values();
+            $variants = \App\Models\ProductVariant::query()->whereIn('id', $variantIds)->lockForUpdate()->get()->keyBy('id');
             $ticketTypes = \App\Models\EventTicketType::query()->whereIn('id', $ticketTypeIds)->lockForUpdate()->get()->keyBy('id');
             $events = \App\Models\Event::query()->whereIn('id', $ticketTypes->pluck('event_id')->unique())->get()->keyBy('id');
             foreach ($items as $item) {
                 if ($item->kind === 'product') {
-                    $p = $products->get($item->product_id);
-                    if (!$p || !$p->is_active) {
-                        continue;
+                    if ($item->product_variant_id) {
+                        $v = $variants->get($item->product_variant_id);
+                        $p = $v ? $products->get($v->product_id) : null;
+                        if (!$v || !$p || !$v->is_active || !$p->is_active) {
+                            continue;
+                        }
+                        $qty = (int) $item->quantity;
+                        if ($v->stock < $qty) {
+                            continue;
+                        }
+                        $v->decrement('stock', $qty);
+                        TransactionItem::create([
+                            'transaction_id' => $tx->id,
+                            'kind' => 'product',
+                            'product_id' => $p->id,
+                            'title' => ($p->getTranslation('name', app()->getLocale()) ?? null) . ' • ' . ($v->size ?? '') . ($v->color ? " • {$v->color}" : ''),
+                            'quantity' => $qty,
+                            'unit_price' => (float) $v->price,
+                            'total_price' => round(((float) $v->price) * $qty, 2),
+                            'meta' => [
+                                'product_variant_id' => $v->id,
+                            ],
+                        ]);
+                    } else {
+                        $p = $products->get($item->product_id);
+                        if (!$p || !$p->is_active) {
+                            continue;
+                        }
+                        $qty = (int) $item->quantity;
+                        if ($p->stock < $qty) {
+                            continue;
+                        }
+                        $p->decrement('stock', $qty);
+                        TransactionItem::create([
+                            'transaction_id' => $tx->id,
+                            'kind' => 'product',
+                            'product_id' => $p->id,
+                            'title' => $p->getTranslation('name', app()->getLocale()) ?? null,
+                            'quantity' => $qty,
+                            'unit_price' => (float) $p->price,
+                            'total_price' => round(((float) $p->price) * $qty, 2),
+                        ]);
                     }
-                    $qty = (int) $item->quantity;
-                    if ($p->stock < $qty) {
-                        continue;
-                    }
-                    $p->decrement('stock', $qty);
-                    TransactionItem::create([
-                        'transaction_id' => $tx->id,
-                        'kind' => 'product',
-                        'product_id' => $p->id,
-                        'title' => $p->getTranslation('name', app()->getLocale()) ?? null,
-                        'quantity' => $qty,
-                        'unit_price' => (float) $p->price,
-                        'total_price' => round(((float) $p->price) * $qty, 2),
-                    ]);
                 } else {
                     $type = $ticketTypes->get($item->event_ticket_type_id);
                     $ev = $type ? $events->get($type->event_id) : null;

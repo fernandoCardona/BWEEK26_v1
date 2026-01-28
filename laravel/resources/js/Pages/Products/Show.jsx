@@ -8,8 +8,18 @@ export default function Show({ product }) {
   const [variantId, setVariantId] = useState(variants[0]?.id ?? null);
   const [qty, setQty] = useState(1);
   const [imageIndex, setImageIndex] = useState(0);
+  const [color, setColor] = useState(variants[0]?.color ?? null);
 
-  const selected = useMemo(() => variants.find(v => v.id === variantId) ?? null, [variants, variantId]);
+  const colors = useMemo(() => Array.from(new Set(variants.map(v => v.color).filter(Boolean))), [variants]);
+  const sizesForColor = useMemo(() => variants.filter(v => (color ? v.color === color : true)).map(v => v.size), [variants, color]);
+  const selected = useMemo(() => {
+    if (variantId) return variants.find(v => v.id === variantId) ?? null;
+    if (color) {
+      const first = variants.find(v => v.color === color) ?? null;
+      return first;
+    }
+    return null;
+  }, [variants, variantId, color]);
   const currentImage = images[imageIndex]?.path ? images[imageIndex].path : images[imageIndex]?.url;
 
   const addToCart = async () => {
@@ -20,6 +30,10 @@ export default function Show({ product }) {
       await axios.post(route('cart.items.add'), payload);
       alert('Añadido al carrito');
     } catch (e) {
+      if (e?.response?.status === 401) {
+        window.location.href = route('login');
+        return;
+      }
       alert(e?.response?.data?.message ?? 'No se pudo añadir');
     }
   };
@@ -50,11 +64,28 @@ export default function Show({ product }) {
                 </div>
               </div>
               <div className="md:col-span-2 space-y-4">
-            {variants.length ? (
+              {variants.length ? (
               <div>
-                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Talla</label>
+                  {!!colors.length && (
+                    <>
+                      <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Color</label>
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {colors.map(c => (
+                          <button
+                            key={c}
+                            type="button"
+                            className={`px-4 py-2 rounded-xl text-sm ${color === c ? 'bg-accent-primary text-white' : 'bg-white/5 border border-white/10 text-gray-200'}`}
+                            onClick={() => setColor(c)}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Talla</label>
                 <div className="flex flex-wrap gap-2">
-                  {variants.map(v => (
+                    {variants.filter(v => (color ? v.color === color : true)).map(v => (
                     <button
                       key={v.id}
                       type="button"
@@ -80,7 +111,14 @@ export default function Show({ product }) {
 
             <div className="flex items-center justify-between">
               <span className="text-2xl font-black">{(selected?.price ?? product?.price ?? 0)}€</span>
-              <button type="button" className="btn-primary px-6 py-3 text-sm" onClick={addToCart}>Añadir al carrito</button>
+              <button
+                type="button"
+                className="btn-primary px-6 py-3 text-sm"
+                onClick={addToCart}
+                disabled={(selected && (selected.stock ?? 0) <= 0) || (!selected && (product?.stock ?? 0) <= 0)}
+              >
+                {(selected && (selected.stock ?? 0) <= 0) || (!selected && (product?.stock ?? 0) <= 0) ? 'Agotado' : 'Añadir al carrito'}
+              </button>
             </div>
               </div>
             </div>

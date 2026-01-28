@@ -157,6 +157,71 @@ export default function Edit({ product, can }) {
                             </div>
                         )}
 
+                        {!isCreate && (
+                            <div>
+                                <div className="flex items-center justify-between gap-4 mb-3">
+                                    <h3 className="text-xl font-bold">Variantes (talla y color)</h3>
+                                    <button
+                                        type="button"
+                                        className="btn-secondary px-5 py-3 text-sm"
+                                        onClick={async () => {
+                                            const size = prompt('Talla (ej. S, M, L)');
+                                            if (!size) return;
+                                            const color = prompt('Color (opcional)');
+                                            const price = prompt('Precio', String(form.data.price || '0'));
+                                            const stock = prompt('Stock', '0');
+                                            const res = await axios.post(route('admin.products.variants.store', product.id), {
+                                                size, color, price: Number(price || 0), stock: Number(stock || 0), is_active: true,
+                                            });
+                                            // Optimista: recargar la página para ver la nueva variante
+                                            router.reload({ only: ['product'] });
+                                        }}
+                                    >
+                                        Añadir variante
+                                    </button>
+                                </div>
+                                <div className="space-y-3">
+                                    {(product?.variants ?? []).map((v) => (
+                                        <div key={v.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                                            <div className="min-w-0">
+                                                <div className="text-sm font-bold">{(v.size || '—')} • {v.color || '—'}</div>
+                                                <div className="text-xs text-gray-500">Precio {v.price}€ • Stock {v.stock ?? 0}</div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    className="btn-secondary px-5 py-3 text-sm"
+                                                    onClick={async () => {
+                                                        const size = prompt('Talla', v.size || '');
+                                                        if (!size) return;
+                                                        const color = prompt('Color', v.color || '');
+                                                        const price = prompt('Precio', String(v.price || '0'));
+                                                        const stock = prompt('Stock', String(v.stock || '0'));
+                                                        await axios.patch(route('admin.products.variants.update', [product.id, v.id]), {
+                                                            size, color, price: Number(price || 0), stock: Number(stock || 0), is_active: true,
+                                                        });
+                                                        router.reload({ only: ['product'] });
+                                                    }}
+                                                >
+                                                    Guardar
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="icon-btn icon-btn-gradient text-red-500 hover:text-red-400"
+                                                    onClick={async () => {
+                                                        await axios.delete(route('admin.products.variants.destroy', [product.id, v.id]));
+                                                        router.reload({ only: ['product'] });
+                                                    }}
+                                                >
+                                                    <FiTrash2 size={20} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <label className="inline-flex items-center gap-3 text-sm text-gray-300 select-none">
                             <span className="text-xs text-gray-400">{form.data.is_active ? 'Activo' : 'Inactivo'}</span>
                             <span className="relative inline-flex items-center">

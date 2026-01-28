@@ -112,6 +112,57 @@ class ProductsController extends Controller
         return back();
     }
 
+    public function storeVariant(Request $request, Product $product)
+    {
+        $data = $request->validate([
+            'size' => ['required', 'string', 'max:20'],
+            'color' => ['nullable', 'string', 'max:30'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+        $variant = \App\Models\ProductVariant::create([
+            'product_id' => $product->id,
+            'size' => $data['size'],
+            'color' => $data['color'] ?? null,
+            'price' => $data['price'],
+            'stock' => (int) $data['stock'],
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+        return response()->json($variant, 201);
+    }
+
+    public function updateVariant(Request $request, Product $product, \App\Models\ProductVariant $variant)
+    {
+        if ($variant->product_id !== $product->id) {
+            abort(404);
+        }
+        $data = $request->validate([
+            'size' => ['required', 'string', 'max:20'],
+            'color' => ['nullable', 'string', 'max:30'],
+            'price' => ['required', 'numeric', 'min:0'],
+            'stock' => ['required', 'integer', 'min:0'],
+            'is_active' => ['nullable', 'boolean'],
+        ]);
+        $variant->update([
+            'size' => $data['size'],
+            'color' => $data['color'] ?? null,
+            'price' => $data['price'],
+            'stock' => (int) $data['stock'],
+            'is_active' => (bool) ($data['is_active'] ?? true),
+        ]);
+        return response()->json(['status' => 'ok']);
+    }
+
+    public function destroyVariant(Request $request, Product $product, \App\Models\ProductVariant $variant)
+    {
+        if ($variant->product_id !== $product->id) {
+            abort(404);
+        }
+        $variant->delete();
+        return response()->json(['status' => 'ok']);
+    }
+
     public function destroy(Request $request, Product $product)
     {
         if ($product->image_path) {
