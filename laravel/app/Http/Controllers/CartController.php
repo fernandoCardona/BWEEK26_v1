@@ -76,20 +76,20 @@ class CartController extends Controller
                 }
                 CartItem::query()->updateOrCreate(
                     ['cart_id' => $cart->id, 'product_variant_id' => $variant->id],
-                    ['kind' => 'product', 'quantity' => $newQty, 'unit_price' => $variant->price]
+                    ['kind' => 'product', 'product_id' => $product->id, 'quantity' => $newQty, 'unit_price' => $variant->price]
                 );
             } else {
                 $product = Product::query()->where('id', $data['product_id'])->firstOrFail();
                 if (!$product->is_active) {
                     abort(422, 'Producto no disponible');
                 }
-                $item = CartItem::query()->where('cart_id', $cart->id)->where('product_id', $product->id)->first();
+                $item = CartItem::query()->where('cart_id', $cart->id)->where('product_id', $product->id)->whereNull('product_variant_id')->first();
                 $newQty = ($item?->quantity ?? 0) + (int) $data['quantity'];
                 if ($product->stock < $newQty) {
                     abort(422, 'No hay stock suficiente');
                 }
                 CartItem::query()->updateOrCreate(
-                    ['cart_id' => $cart->id, 'product_id' => $product->id],
+                    ['cart_id' => $cart->id, 'product_id' => $product->id, 'product_variant_id' => null],
                     ['kind' => 'product', 'quantity' => $newQty, 'unit_price' => $product->price]
                 );
             }
@@ -106,7 +106,7 @@ class CartController extends Controller
             }
             CartItem::query()->updateOrCreate(
                 ['cart_id' => $cart->id, 'event_ticket_type_id' => $type->id],
-                ['kind' => 'ticket', 'quantity' => $newQty, 'unit_price' => $type->price]
+                ['kind' => 'ticket', 'product_id' => null, 'product_variant_id' => null, 'quantity' => $newQty, 'unit_price' => $type->price]
             );
         }
 

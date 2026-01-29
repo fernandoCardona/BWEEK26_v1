@@ -3,10 +3,24 @@ import Layout from '@/Layouts/Layout';
 import { Link, usePage } from '@inertiajs/react';
 import { FiChevronDown } from 'react-icons/fi';
 import { formatDMY, formatDMYFromYMD, formatTimeHM } from '@/utils/date';
+import axios from 'axios';
 
 export default function Show({ event }) {
     const { props } = usePage();
     const isAuthed = !!props?.auth?.user;
+    const [adding, setAdding] = useState(null);
+    const addTicketToCart = async (ticketTypeId) => {
+        if (!isAuthed) {
+            window.location.href = route('login');
+            return;
+        }
+        setAdding(ticketTypeId);
+        try {
+            await axios.post(route('cart.items.add'), { kind: 'ticket', event_ticket_type_id: ticketTypeId, quantity: 1 });
+        } finally {
+            setAdding(null);
+        }
+    };
 
     const programByDay = useMemo(() => {
         const items = event?.program_items ?? [];
@@ -69,8 +83,28 @@ export default function Show({ event }) {
                             {event?.description && (
                                 <div className="mt-8 text-gray-300 leading-relaxed whitespace-pre-line">{event.description}</div>
                             )}
+
+                            {(event?.ticket_types ?? []).length ? (
+                                <div className="mt-8">
+                                    <div className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-3">Tickets del evento</div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {event.ticket_types.map((t) => (
+                                            <button
+                                                key={t.id}
+                                                type="button"
+                                                className="text-[10px] uppercase tracking-widest font-bold border border-white/10 bg-black/30 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:hover:bg-black/30"
+                                                disabled={!isAuthed || adding === t.id || (t.stock ?? 0) <= 0}
+                                                onClick={() => addTicketToCart(t.id)}
+                                            >
+                                                {t.code} • {t.price}€ • stock {t.stock} {isAuthed ? '' : '• login'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
                         </div>
                     </div>
+
 
                     {(event?.sponsors ?? []).length > 0 && (
                         <section className="mt-10">
@@ -161,9 +195,15 @@ export default function Show({ event }) {
                                             <div className="flex flex-wrap items-center gap-2">
                                                 {(s.ticket_types ?? []).length ? (
                                                     s.ticket_types.map((t) => (
-                                                        <span key={t.id} className="text-[10px] uppercase tracking-widest font-bold border border-white/10 bg-black/30 rounded-lg px-3 py-2">
-                                                            {t.code} • {t.price}€ • stock {t.stock}
-                                                        </span>
+                                                        <button
+                                                            key={t.id}
+                                                            type="button"
+                                                            className="text-[10px] uppercase tracking-widest font-bold border border-white/10 bg-black/30 rounded-lg px-3 py-2 hover:bg-white/10 transition-colors disabled:opacity-50 disabled:hover:bg-black/30"
+                                                            disabled={!isAuthed || adding === t.id || (t.stock ?? 0) <= 0}
+                                                            onClick={() => addTicketToCart(t.id)}
+                                                        >
+                                                            {t.code} • {t.price}€ • stock {t.stock} {isAuthed ? '' : '• login'}
+                                                        </button>
                                                     ))
                                                 ) : (
                                                     <span className="text-xs text-gray-500">Tickets próximamente</span>

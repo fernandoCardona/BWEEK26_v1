@@ -24,6 +24,8 @@
 
 /nginx-proxy-manager/data/database.sqlite
 
+/postgres/backups/
+
 # IDE
 /.vscode/
 /.idea/

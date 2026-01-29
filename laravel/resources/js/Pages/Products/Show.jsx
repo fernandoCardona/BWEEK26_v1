@@ -11,7 +11,8 @@ export default function Show({ product }) {
   const [color, setColor] = useState(variants[0]?.color ?? null);
 
   const colors = useMemo(() => Array.from(new Set(variants.map(v => v.color).filter(Boolean))), [variants]);
-  const sizesForColor = useMemo(() => variants.filter(v => (color ? v.color === color : true)).map(v => v.size), [variants, color]);
+  const variantsForColor = useMemo(() => variants.filter((v) => (color ? v.color === color : true)), [variants, color]);
+  const sizesForColor = useMemo(() => variantsForColor.map((v) => v.size).filter(Boolean), [variantsForColor]);
   const selected = useMemo(() => {
     if (variantId) return variants.find(v => v.id === variantId) ?? null;
     if (color) {
@@ -20,14 +21,37 @@ export default function Show({ product }) {
     }
     return null;
   }, [variants, variantId, color]);
-  const currentImage = images[imageIndex]?.path ? images[imageIndex].path : images[imageIndex]?.url;
+  const currentImage = images[imageIndex]?.url ?? product?.image_url ?? null;
+  const colorHex = (c) => {
+    const key = String(c || '').toLowerCase();
+    const map = {
+      negro: '#0b0b0b',
+      blanco: '#f5f5f5',
+      gris: '#9ca3af',
+      azul: '#2563eb',
+      rojo: '#dc2626',
+      verde: '#16a34a',
+      amarillo: '#f59e0b',
+      naranja: '#f97316',
+      morado: '#7c3aed',
+      rosa: '#ec4899',
+      beige: '#d6c1a5',
+      marrón: '#7c4a2d',
+      marron: '#7c4a2d',
+    };
+    return map[key] ?? '#111827';
+  };
 
-  const addToCart = async () => {
+  const addToCart = async ({ goToCart } = {}) => {
     try {
       const payload = selected
         ? { kind: 'product', product_variant_id: selected.id, quantity: qty }
         : { kind: 'product', product_id: product.id, quantity: qty };
       await axios.post(route('cart.items.add'), payload);
+      if (goToCart) {
+        window.location.href = route('cart.index');
+        return;
+      }
       alert('Añadido al carrito');
     } catch (e) {
       if (e?.response?.status === 401) {
@@ -41,85 +65,143 @@ export default function Show({ product }) {
   return (
     <Layout>
       <div className="pt-32 pb-20 px-6">
-        <div className="container mx-auto max-w-4xl">
-          <h1 className="text-4xl font-black tracking-tighter mb-2">{product?.name?.es ?? product?.name ?? 'Producto'}</h1>
-          <p className="text-gray-400 mb-6">{product?.description?.es ?? '—'}</p>
-          <div className="glass-card p-6 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="md:col-span-1">
-                <div className="aspect-square rounded-2xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
-                  {currentImage ? <img src={currentImage} alt="Producto" className="w-full h-full object-contain" /> : <span className="text-xs text-gray-500">Sin imagen</span>}
-                </div>
-                <div className="mt-3 flex items-center gap-2 flex-wrap">
-                  {images.map((img, idx) => (
-                    <button
-                      key={img.id}
-                      type="button"
-                      className={`w-16 h-16 rounded-xl border ${imageIndex === idx ? 'border-accent-primary' : 'border-white/10'} bg-white/5 overflow-hidden`}
-                      onClick={() => setImageIndex(idx)}
-                    >
-                      <img src={img.url ?? img.path} alt="thumb" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-7">
+              <div className="glass-card p-6 border border-white/10 bg-white/5">
+                <div className="grid grid-cols-12 gap-4">
+                  <div className="col-span-2 hidden md:block">
+                    <div className="flex flex-col gap-3">
+                      {images.map((img, idx) => (
+                        <button
+                          key={img.id}
+                          type="button"
+                          className={`w-16 h-16 rounded-xl border ${imageIndex === idx ? 'border-accent-primary' : 'border-white/10'} bg-white/5 overflow-hidden`}
+                          onClick={() => setImageIndex(idx)}
+                        >
+                          <img src={img.url} alt="thumb" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="col-span-12 md:col-span-10">
+                    <div className="aspect-square rounded-2xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
+                      {currentImage ? (
+                        <img src={currentImage} alt="Producto" className="w-full h-full object-contain" />
+                      ) : (
+                        <span className="text-xs text-gray-500">Sin imagen</span>
+                      )}
+                    </div>
+                    <div className="mt-4 flex items-center gap-2 flex-wrap md:hidden">
+                      {images.map((img, idx) => (
+                        <button
+                          key={img.id}
+                          type="button"
+                          className={`w-14 h-14 rounded-xl border ${imageIndex === idx ? 'border-accent-primary' : 'border-white/10'} bg-white/5 overflow-hidden`}
+                          onClick={() => setImageIndex(idx)}
+                        >
+                          <img src={img.url} alt="thumb" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="md:col-span-2 space-y-4">
-              {variants.length ? (
-              <div>
-                  {!!colors.length && (
-                    <>
-                      <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Color</label>
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {colors.map(c => (
+            </div>
+
+            <div className="lg:col-span-5">
+              <div className="glass-card p-6 border border-white/10 bg-white/5 space-y-6">
+                <div>
+                  <h1 className="text-3xl md:text-4xl font-black tracking-tighter">{product?.name?.es ?? product?.name ?? 'Producto'}</h1>
+                  <div className="mt-3 flex items-baseline justify-between gap-4">
+                    <div className="text-3xl font-black">{(selected?.price ?? product?.price ?? 0)}€</div>
+                    <div className="text-xs uppercase tracking-widest text-gray-500 font-bold">
+                      {variants.length ? 'Con variantes' : (product?.stock ?? 0) > 0 ? 'En stock' : 'Agotado'}
+                    </div>
+                  </div>
+                  {product?.description?.es ? <p className="text-gray-400 mt-4 whitespace-pre-line">{product.description.es}</p> : null}
+                </div>
+
+                {!!colors.length && (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold uppercase tracking-widest text-gray-500">Color</label>
+                      <div className="text-xs text-gray-400">{color ?? ''}</div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {colors.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          className={`w-9 h-9 rounded-full border ${color === c ? 'border-accent-primary' : 'border-white/15'} bg-black/30 flex items-center justify-center`}
+                          onClick={() => {
+                            setColor(c);
+                            const first = variants.find((v) => v.color === c && v.is_active && (v.stock ?? 0) > 0) ?? variants.find((v) => v.color === c) ?? null;
+                            setVariantId(first?.id ?? null);
+                          }}
+                          title={c}
+                        >
+                          <span className="w-6 h-6 rounded-full" style={{ backgroundColor: colorHex(c) }} />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {variants.length ? (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Elige talla</label>
+                    <div className="flex flex-wrap gap-3">
+                      {variantsForColor.map((v) => {
+                        const out = !v.is_active || (v.stock ?? 0) <= 0;
+                        const active = variantId === v.id;
+                        return (
                           <button
-                            key={c}
+                            key={v.id}
                             type="button"
-                            className={`px-4 py-2 rounded-xl text-sm ${color === c ? 'bg-accent-primary text-white' : 'bg-white/5 border border-white/10 text-gray-200'}`}
-                            onClick={() => setColor(c)}
+                            className={`min-w-[44px] px-4 py-3 rounded-full border text-sm font-bold ${
+                              active ? 'border-accent-primary text-white' : 'border-white/15 text-gray-200'
+                            } ${out ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'}`}
+                            disabled={out}
+                            onClick={() => setVariantId(v.id)}
                           >
-                            {c}
+                            {v.size || '—'}
                           </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                  <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Talla</label>
-                <div className="flex flex-wrap gap-2">
-                    {variants.filter(v => (color ? v.color === color : true)).map(v => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      className={`px-4 py-2 rounded-xl text-sm ${variantId === v.id ? 'bg-accent-primary text-white' : 'bg-white/5 border border-white/10 text-gray-200'}`}
-                      disabled={!v.is_active || (v.stock ?? 0) <= 0}
-                      onClick={() => setVariantId(v.id)}
-                    >
-                      {v.size || '—'} • stock {v.stock ?? 0}
-                    </button>
-                  ))}
+                        );
+                      })}
+                    </div>
+                    {selected ? (
+                      <div className="mt-3 text-xs text-gray-500">stock {selected.stock ?? 0}</div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                <div className="flex items-center gap-3">
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Cantidad</label>
+                  <button type="button" className="btn-secondary px-3 py-2 text-sm" onClick={() => setQty(Math.max(1, qty - 1))}>-</button>
+                  <span className="w-10 text-center text-sm font-bold">{qty}</span>
+                  <button type="button" className="btn-secondary px-3 py-2 text-sm" onClick={() => setQty(qty + 1)}>+</button>
                 </div>
-              </div>
-            ) : (
-              <div className="text-gray-400">Sin variantes</div>
-            )}
 
-            <div className="flex items-center gap-3">
-              <label className="text-sm text-gray-400">Cantidad</label>
-              <button type="button" className="btn-secondary px-3 py-2 text-sm" onClick={() => setQty(Math.max(1, qty - 1))}>-</button>
-              <span className="w-10 text-center text-sm font-bold">{qty}</span>
-              <button type="button" className="btn-secondary px-3 py-2 text-sm" onClick={() => setQty(qty + 1)}>+</button>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-black">{(selected?.price ?? product?.price ?? 0)}€</span>
-              <button
-                type="button"
-                className="btn-primary px-6 py-3 text-sm"
-                onClick={addToCart}
-                disabled={(selected && (selected.stock ?? 0) <= 0) || (!selected && (product?.stock ?? 0) <= 0)}
-              >
-                {(selected && (selected.stock ?? 0) <= 0) || (!selected && (product?.stock ?? 0) <= 0) ? 'Agotado' : 'Añadir al carrito'}
-              </button>
-            </div>
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    className="btn-primary w-full py-3 text-sm"
+                    onClick={() => addToCart({ goToCart: false })}
+                    disabled={(selected && (selected.stock ?? 0) <= 0) || (!selected && (product?.stock ?? 0) <= 0)}
+                  >
+                    {(selected && (selected.stock ?? 0) <= 0) || (!selected && (product?.stock ?? 0) <= 0) ? 'Agotado' : 'Añadir a la cesta'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary w-full py-3 text-sm"
+                    onClick={() => addToCart({ goToCart: true })}
+                    disabled={(selected && (selected.stock ?? 0) <= 0) || (!selected && (product?.stock ?? 0) <= 0)}
+                  >
+                    Comprar ahora
+                  </button>
+                  <div className="text-xs text-gray-500">En el checkout podrás elegir Stripe o PayPal.</div>
+                </div>
               </div>
             </div>
           </div>

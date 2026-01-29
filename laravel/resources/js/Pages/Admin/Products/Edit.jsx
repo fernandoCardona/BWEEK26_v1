@@ -5,7 +5,10 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 import axios from 'axios';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 
-export default function Edit({ product, can }) {
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+const COLORS = ['Negro', 'Blanco', 'Gris', 'Azul', 'Rojo', 'Verde', 'Amarillo', 'Naranja', 'Morado', 'Rosa', 'Beige', 'Marrón'];
+
+export default function Edit({ product, categories = [], can }) {
     const isCreate = !product;
     const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
     useLockBodyScroll(confirmDeleteOpen);
@@ -14,6 +17,14 @@ export default function Edit({ product, can }) {
     const galleryInputRef = useRef(null);
     const [gallery, setGallery] = useState(product?.images ?? []);
     const [primaryUrl, setPrimaryUrl] = useState(product?.image_url ?? null);
+    const [variants, setVariants] = useState(product?.variants ?? []);
+    const [variantDraft, setVariantDraft] = useState({
+        size: SIZES[0],
+        color: COLORS[0],
+        price: product?.price ?? '',
+        stock: 0,
+        is_active: true,
+    });
 
     const form = useForm({
         name: product?.name ?? '',
@@ -23,6 +34,7 @@ export default function Edit({ product, can }) {
         stock: product?.stock ?? 0,
         is_active: product?.is_active ?? true,
         image: null,
+        variants: [],
     });
 
     const imagePreview = useMemo(() => {
@@ -33,7 +45,21 @@ export default function Edit({ product, can }) {
     const submit = (e) => {
         e.preventDefault();
         if (isCreate) {
-            form.post(route('admin.products.store'), { forceFormData: true, preserveScroll: true });
+            form.transform((data) => ({
+                ...data,
+                variants: (variants ?? []).map((v) => ({
+                    size: v.size ?? null,
+                    color: v.color ?? null,
+                    price: Number(v.price ?? data.price ?? 0),
+                    stock: Number(v.stock ?? 0),
+                    is_active: v.is_active ?? true,
+                })),
+            }));
+            form.post(route('admin.products.store'), {
+                forceFormData: true,
+                preserveScroll: true,
+                onFinish: () => form.transform((d) => d),
+            });
         } else {
             form.patch(route('admin.products.update', product.id), { forceFormData: true, preserveScroll: true });
         }
@@ -45,6 +71,7 @@ export default function Edit({ product, can }) {
     };
 
     const uploadGalleryImage = async (file) => {
+        if (!file) return;
         const fd = new FormData();
         fd.append('image', file);
         const res = await axios.post(route('admin.products.images.store', product.id), fd, { headers: { 'Content-Type': 'multipart/form-data' } });
@@ -54,6 +81,57 @@ export default function Edit({ product, can }) {
     const deleteGalleryImage = async (imageId) => {
         await axios.delete(route('admin.products.images.destroy', [product.id, imageId]));
         setGallery((prev) => prev.filter((g) => g.id !== imageId));
+    };
+
+    const createVariant = async () => {
+        const key = (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+        if (isCreate) {
+            const next = {
+                temp_id: key,
+                size: variantDraft.size,
+                color: variantDraft.color,
+                price: variantDraft.price,
+                stock: Number(variantDraft.stock || 0),
+                is_active: !!variantDraft.is_active,
+            };
+            const exists = (variants ?? []).some((v) => String(v.size ?? '') === String(next.size ?? '') && String(v.color ?? '') === String(next.color ?? ''));
+            if (exists) return;
+            setVariants((prev) => [...prev, next]);
+            setVariantDraft((d) => ({ ...d, stock: 0 }));
+            return;
+        }
+        if (!product?.id) return;
+        const res = await axios.post(route('admin.products.variants.store', product.id), {
+            size: variantDraft.size,
+            color: variantDraft.color,
+            price: Number(variantDraft.price || 0),
+            stock: Number(variantDraft.stock || 0),
+            is_active: !!variantDraft.is_active,
+        });
+        setVariants((prev) => [...prev, res.data]);
+        setVariantDraft((d) => ({ ...d, stock: 0 }));
+    };
+
+    const saveVariant = async (v) => {
+        if (isCreate) return;
+        if (!product?.id) return;
+        await axios.patch(route('admin.products.variants.update', [product.id, v.id]), {
+            size: v.size,
+            color: v.color,
+            price: Number(v.price || 0),
+            stock: Number(v.stock || 0),
+            is_active: !!v.is_active,
+        });
+    };
+
+    const deleteVariant = async (variantId) => {
+        if (isCreate) {
+            setVariants((prev) => prev.filter((v) => (v.temp_id ?? v.id) !== variantId));
+            return;
+        }
+        if (!product?.id) return;
+        await axios.delete(route('admin.products.variants.destroy', [product.id, variantId]));
+        setVariants((prev) => prev.filter((v) => v.id !== variantId));
     };
 
     return (
@@ -111,25 +189,41 @@ export default function Edit({ product, can }) {
                             <div>
                                 <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Categoría</label>
                                 <select
-                                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3"
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none"
                                     value={form.data.category}
                                     onChange={(e) => form.setData('category', e.target.value)}
                                 >
                                     <option value="">{'—'}</option>
-                                    {(window?.__inertia?.page?.props?.categories ?? []).map((c) => (
-                                        <option key={c.id} value={c.slug}>{c.name}</option>
+                                    {categories.map((c) => (
+                                        <option key={c.id} value={c.slug}>
+                                            {c.name}
+                                        </option>
                                     ))}
                                 </select>
                                 {form.errors.category && <div className="text-xs text-red-400 mt-1">{form.errors.category}</div>}
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Precio (€)" value={form.data.price} onChange={(e) => form.setData('price', e.target.value)} error={form.errors.price} />
-                            <Field
-                                label="Stock"
-                                value={form.data.stock}
-                                onChange={(e) => form.setData('stock', e.target.value)}
-                                error={form.errors.stock}
-                                disabled={!can?.manage_stock}
-                            />
+                            {variants.length ? (
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Stock total (variantes)</label>
+                                    <input
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white opacity-70"
+                                        value={(variants ?? []).reduce((sum, v) => sum + Number(v.stock || 0), 0)}
+                                        disabled
+                                    />
+                                </div>
+                            ) : (
+                                <Field
+                                    label="Stock"
+                                    value={form.data.stock}
+                                    onChange={(e) => form.setData('stock', e.target.value)}
+                                    error={form.errors.stock}
+                                    disabled={!can?.manage_stock}
+                                />
+                            )}
                         </div>
 
                         {!isCreate && (
@@ -157,70 +251,137 @@ export default function Edit({ product, can }) {
                             </div>
                         )}
 
-                        {!isCreate && (
-                            <div>
-                                <div className="flex items-center justify-between gap-4 mb-3">
-                                    <h3 className="text-xl font-bold">Variantes (talla y color)</h3>
-                                    <button
-                                        type="button"
-                                        className="btn-secondary px-5 py-3 text-sm"
-                                        onClick={async () => {
-                                            const size = prompt('Talla (ej. S, M, L)');
-                                            if (!size) return;
-                                            const color = prompt('Color (opcional)');
-                                            const price = prompt('Precio', String(form.data.price || '0'));
-                                            const stock = prompt('Stock', '0');
-                                            const res = await axios.post(route('admin.products.variants.store', product.id), {
-                                                size, color, price: Number(price || 0), stock: Number(stock || 0), is_active: true,
-                                            });
-                                            // Optimista: recargar la página para ver la nueva variante
-                                            router.reload({ only: ['product'] });
-                                        }}
-                                    >
-                                        Añadir variante
-                                    </button>
+                        <div className="pt-2">
+                            <div className="flex items-center justify-between gap-4 mb-4">
+                                <div>
+                                    <h3 className="text-xl font-bold">Variantes</h3>
+                                    <p className="text-sm text-gray-400">Crea stock por talla y color.</p>
                                 </div>
-                                <div className="space-y-3">
-                                    {(product?.variants ?? []).map((v) => (
-                                        <div key={v.id} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
-                                            <div className="min-w-0">
-                                                <div className="text-sm font-bold">{(v.size || '—')} • {v.color || '—'}</div>
-                                                <div className="text-xs text-gray-500">Precio {v.price}€ • Stock {v.stock ?? 0}</div>
+                            </div>
+
+                            <div className="p-4 rounded-2xl border border-white/10 bg-white/5 mb-4">
+                                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Talla</label>
+                                        <select
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
+                                            value={variantDraft.size}
+                                            onChange={(e) => setVariantDraft((d) => ({ ...d, size: e.target.value }))}
+                                        >
+                                            {SIZES.map((s) => (
+                                                <option key={s} value={s}>
+                                                    {s}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Color</label>
+                                        <select
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
+                                            value={variantDraft.color}
+                                            onChange={(e) => setVariantDraft((d) => ({ ...d, color: e.target.value }))}
+                                        >
+                                            {COLORS.map((c) => (
+                                                <option key={c} value={c}>
+                                                    {c}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Precio</label>
+                                        <input
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
+                                            value={variantDraft.price}
+                                            onChange={(e) => setVariantDraft((d) => ({ ...d, price: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Stock</label>
+                                        <input
+                                            className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
+                                            value={variantDraft.stock}
+                                            onChange={(e) => setVariantDraft((d) => ({ ...d, stock: e.target.value }))}
+                                        />
+                                    </div>
+                                    <div className="flex items-end">
+                                        <button type="button" className="btn-primary w-full px-6 py-3 text-sm" onClick={createVariant}>
+                                            Añadir
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                {variants.map((v) => (
+                                    <div key={v.id ?? v.temp_id} className="p-4 rounded-2xl border border-white/10 bg-white/5">
+                                        <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Talla</label>
+                                                <select
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
+                                                    value={v.size ?? ''}
+                                                    onChange={(e) => setVariants((prev) => prev.map((x) => ((x.id ?? x.temp_id) === (v.id ?? v.temp_id) ? { ...x, size: e.target.value } : x)))}
+                                                >
+                                                    {SIZES.map((s) => (
+                                                        <option key={s} value={s}>
+                                                            {s}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Color</label>
+                                                <select
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
+                                                    value={v.color ?? ''}
+                                                    onChange={(e) => setVariants((prev) => prev.map((x) => ((x.id ?? x.temp_id) === (v.id ?? v.temp_id) ? { ...x, color: e.target.value } : x)))}
+                                                >
+                                                    {COLORS.map((c) => (
+                                                        <option key={c} value={c}>
+                                                            {c}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Precio</label>
+                                                <input
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
+                                                    value={v.price ?? ''}
+                                                    onChange={(e) => setVariants((prev) => prev.map((x) => ((x.id ?? x.temp_id) === (v.id ?? v.temp_id) ? { ...x, price: e.target.value } : x)))}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Stock</label>
+                                                <input
+                                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
+                                                    value={v.stock ?? 0}
+                                                    onChange={(e) => setVariants((prev) => prev.map((x) => ((x.id ?? x.temp_id) === (v.id ?? v.temp_id) ? { ...x, stock: e.target.value } : x)))}
+                                                />
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <button
-                                                    type="button"
-                                                    className="btn-secondary px-5 py-3 text-sm"
-                                                    onClick={async () => {
-                                                        const size = prompt('Talla', v.size || '');
-                                                        if (!size) return;
-                                                        const color = prompt('Color', v.color || '');
-                                                        const price = prompt('Precio', String(v.price || '0'));
-                                                        const stock = prompt('Stock', String(v.stock || '0'));
-                                                        await axios.patch(route('admin.products.variants.update', [product.id, v.id]), {
-                                                            size, color, price: Number(price || 0), stock: Number(stock || 0), is_active: true,
-                                                        });
-                                                        router.reload({ only: ['product'] });
-                                                    }}
-                                                >
-                                                    Guardar
-                                                </button>
+                                                {!isCreate && (
+                                                    <button type="button" className="btn-secondary px-5 py-3 text-sm" onClick={() => saveVariant(v)}>
+                                                        Guardar
+                                                    </button>
+                                                )}
                                                 <button
                                                     type="button"
                                                     className="icon-btn icon-btn-gradient text-red-500 hover:text-red-400"
-                                                    onClick={async () => {
-                                                        await axios.delete(route('admin.products.variants.destroy', [product.id, v.id]));
-                                                        router.reload({ only: ['product'] });
-                                                    }}
+                                                    onClick={() => deleteVariant(v.id ?? v.temp_id)}
+                                                    aria-label="Eliminar variante"
                                                 >
                                                     <FiTrash2 size={20} />
                                                 </button>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+                                ))}
+                                {!variants.length && <div className="text-gray-400">Añade variantes si vendes tallas/colores.</div>}
                             </div>
-                        )}
+                        </div>
 
                         <label className="inline-flex items-center gap-3 text-sm text-gray-300 select-none">
                             <span className="text-xs text-gray-400">{form.data.is_active ? 'Activo' : 'Inactivo'}</span>

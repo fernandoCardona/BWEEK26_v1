@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductImage;
 use App\Models\ProductCategory;
+use App\Models\ProductVariant;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -34,7 +36,7 @@ class ProductsController extends Controller
         return Inertia::render('Admin/Products/Index', [
             'products' => $products,
             'can' => [
-                'create' => $request->user()?->role === 'super_admin',
+                'create' => in_array($request->user()?->role, ['super_admin', 'admin'], true),
             ],
         ]);
     }
@@ -47,8 +49,8 @@ class ProductsController extends Controller
             'categories' => $categories,
             'can' => [
                 'delete' => false,
-                'manage_stock' => true,
-                'toggle_active' => true,
+                'manage_stock' => in_array($request->user()?->role, ['super_admin', 'admin'], true),
+                'toggle_active' => in_array($request->user()?->role, ['super_admin', 'admin'], true),
             ],
         ]);
     }
@@ -74,12 +76,22 @@ class ProductsController extends Controller
                     'url' => Storage::disk('public')->url($img->path),
                     'sort_order' => $img->sort_order,
                 ]),
+                'variants' => $product->variants()->orderBy('size')->orderBy('color')->get()->map(function ($v) {
+                    return [
+                        'id' => $v->id,
+                        'size' => $v->size,
+                        'color' => $v->color,
+                        'price' => (string) $v->price,
+                        'stock' => (int) $v->stock,
+                        'is_active' => (bool) $v->is_active,
+                    ];
+                }),
             ],
             'categories' => $categories,
             'can' => [
                 'delete' => $role === 'super_admin',
-                'manage_stock' => $role === 'super_admin',
-                'toggle_active' => $role === 'super_admin',
+                'manage_stock' => in_array($role, ['super_admin', 'admin'], true),
+                'toggle_active' => in_array($role, ['super_admin', 'admin'], true),
             ],
         ]);
     }
@@ -87,12 +99,53 @@ class ProductsController extends Controller
     public function store(Request $request)
     {
         $data = $this->validateProduct($request);
+        $variants = $request->validate([
+            'variants' => ['nullable', 'array', 'max:200'],
+            'variants.*.size' => ['nullable', 'string', 'max:20'],
+            'variants.*.color' => ['nullable', 'string', 'max:30'],
+            'variants.*.price' => ['required_with:variants', 'numeric', 'min:0'],
+            'variants.*.stock' => ['required_with:variants', 'integer', 'min:0'],
+            'variants.*.is_active' => ['nullable', 'boolean'],
+        ])['variants'] ?? [];
 
-        $product = new Product();
-        $product->fill($data);
-        $product->save();
+        $product = DB::transaction(function () use ($request, $data, $variants) {
+            $product = new Product();
+            $product->fill($data);
+            $product->save();
 
-        $this->handleImage($request, $product);
+            if (!empty($variants)) {
+                $rows = [];
+                $seen = [];
+                foreach ($variants as $v) {
+                    $size = $v['size'] ?? null;
+                    $color = $v['color'] ?? null;
+                    $key = strtolower(trim((string) $size)) . '|' . strtolower(trim((string) $color));
+                    if (isset($seen[$key])) {
+                        continue;
+                    }
+                    $seen[$key] = true;
+                    $rows[] = [
+                        'product_id' => $product->id,
+                        'size' => $size,
+                        'color' => $color,
+                        'price' => $v['price'],
+                        'stock' => (int) ($v['stock'] ?? 0),
+                        'is_active' => (bool) ($v['is_active'] ?? true),
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+                if (!empty($rows)) {
+                    ProductVariant::query()->insert($rows);
+                    $product->stock = array_sum(array_map(fn ($r) => (int) ($r['stock'] ?? 0), $rows));
+                    $product->save();
+                }
+            }
+
+            $this->handleImage($request, $product);
+
+            return $product;
+        });
 
         return redirect()->route('admin.products.edit', $product->id);
     }
@@ -100,12 +153,12 @@ class ProductsController extends Controller
     public function update(Request $request, Product $product)
     {
         $role = $request->user()?->role;
-        $data = $this->validateProduct($request, $role !== 'super_admin');
+        $data = $this->validateProduct($request, !in_array($role, ['super_admin', 'admin'], true));
 
         $product->fill($data);
         $product->save();
 
-        if ($role === 'super_admin') {
+        if (in_array($role, ['super_admin', 'admin'], true)) {
             $this->handleImage($request, $product);
         }
 

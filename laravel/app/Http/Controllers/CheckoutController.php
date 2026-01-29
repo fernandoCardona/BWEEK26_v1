@@ -164,6 +164,158 @@ class CheckoutController extends Controller
         ]);
     }
 
+    public function createPaypalCheckout(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            abort(401);
+        }
+
+        $cart = Cart::query()
+            ->firstOrCreate(['user_id' => $user->id], ['currency' => 'EUR']);
+        $items = CartItem::query()->where('cart_id', $cart->id)->get();
+        if ($items->isEmpty()) {
+            abort(422, 'El carrito está vacío');
+        }
+
+        $productIds = $items->where('kind', 'product')->pluck('product_id')->unique()->values();
+        $ticketTypeIds = $items->where('kind', 'ticket')->pluck('event_ticket_type_id')->unique()->values();
+        $products = Product::query()->whereIn('id', $productIds)->get()->keyBy('id');
+        $variantIds = $items->where('kind', 'product')->pluck('product_variant_id')->filter()->unique()->values();
+        $variants = \App\Models\ProductVariant::query()->whereIn('id', $variantIds)->get()->keyBy('id');
+        $ticketTypes = \App\Models\EventTicketType::query()->whereIn('id', $ticketTypeIds)->get()->keyBy('id');
+        $events = \App\Models\Event::query()->whereIn('id', $ticketTypes->pluck('event_id')->unique())->get()->keyBy('id');
+
+        $total = 0.0;
+        foreach ($items as $item) {
+            if ($item->kind === 'product') {
+                if ($item->product_variant_id) {
+                    $v = $variants->get($item->product_variant_id);
+                    $p = $v ? $products->get($v->product_id) : null;
+                    if (!$v || !$p || !$v->is_active || !$p->is_active) {
+                        abort(422, 'Variante no disponible');
+                    }
+                    if ($v->stock < $item->quantity) {
+                        abort(422, 'No hay stock suficiente para la talla/color seleccionados');
+                    }
+                    $total += (float) $v->price * (int) $item->quantity;
+                } else {
+                    $p = $products->get($item->product_id);
+                    if (!$p || !$p->is_active) {
+                        abort(422, 'Producto no disponible');
+                    }
+                    if ($p->stock < $item->quantity) {
+                        abort(422, 'No hay stock suficiente');
+                    }
+                    $total += (float) $p->price * (int) $item->quantity;
+                }
+            } else {
+                $type = $ticketTypes->get($item->event_ticket_type_id);
+                if (!$type || !$type->is_active) {
+                    abort(422, 'Ticket no disponible');
+                }
+                $ev = $events->get($type->event_id);
+                if (!$ev || !$ev->is_active) {
+                    abort(422, 'Evento no disponible');
+                }
+                if ($type->stock < $item->quantity) {
+                    abort(422, 'No hay stock suficiente de tickets');
+                }
+                $total += (float) $type->price * (int) $item->quantity;
+            }
+        }
+
+        $tx = Transaction::create([
+            'user_id' => $user->id,
+            'type' => 'merch',
+            'status' => 'pending',
+            'currency' => $cart->currency ?? 'EUR',
+            'total_amount' => round($total, 2),
+            'meta' => ['source' => 'paypal_checkout', 'cart_id' => $cart->id],
+        ]);
+
+        $accessToken = $this->paypalAccessToken();
+        $baseUrl = $this->paypalBaseUrl();
+
+        $orderResp = Http::withToken($accessToken)
+            ->post("{$baseUrl}/v2/checkout/orders", [
+                'intent' => 'CAPTURE',
+                'purchase_units' => [
+                    [
+                        'custom_id' => $tx->id,
+                        'amount' => [
+                            'currency_code' => strtoupper($cart->currency ?? 'EUR'),
+                            'value' => number_format((float) $tx->total_amount, 2, '.', ''),
+                        ],
+                    ],
+                ],
+                'application_context' => [
+                    'brand_name' => config('app.name'),
+                    'landing_page' => 'LOGIN',
+                    'shipping_preference' => 'NO_SHIPPING',
+                    'user_action' => 'PAY_NOW',
+                    'return_url' => url('/checkout/paypal/return'),
+                    'cancel_url' => url('/cart'),
+                ],
+            ]);
+
+        if (!$orderResp->successful()) {
+            $tx->update(['status' => 'failed', 'meta' => array_merge($tx->meta ?? [], ['error' => $orderResp->json()])]);
+            abort(502, 'Error creando orden PayPal');
+        }
+
+        $order = $orderResp->json();
+        $tx->update(['meta' => array_merge($tx->meta ?? [], ['paypal_order_id' => $order['id'] ?? null])]);
+
+        $approveUrl = null;
+        foreach (($order['links'] ?? []) as $link) {
+            if (($link['rel'] ?? '') === 'approve') {
+                $approveUrl = $link['href'] ?? null;
+                break;
+            }
+        }
+
+        return response()->json([
+            'order_id' => $order['id'] ?? null,
+            'url' => $approveUrl,
+            'tx_id' => $tx->id,
+        ]);
+    }
+
+    public function paypalReturn(Request $request)
+    {
+        $token = (string) $request->query('token', '');
+        if ($token === '') {
+            return redirect('/cart');
+        }
+
+        $tx = Transaction::query()->whereRaw("(meta->>'paypal_order_id') = ?", [$token])->first();
+        if (!$tx) {
+            return redirect('/cart');
+        }
+
+        $accessToken = $this->paypalAccessToken();
+        $baseUrl = $this->paypalBaseUrl();
+
+        $captureResp = Http::withToken($accessToken)
+            ->post("{$baseUrl}/v2/checkout/orders/{$token}/capture", []);
+
+        if (!$captureResp->successful()) {
+            $tx->update(['status' => 'failed', 'meta' => array_merge($tx->meta ?? [], ['paypal_capture_error' => $captureResp->json()])]);
+            return redirect('/cart');
+        }
+
+        $capture = $captureResp->json();
+        $status = (string) ($capture['status'] ?? '');
+        $tx->update(['meta' => array_merge($tx->meta ?? [], ['paypal_capture' => $capture, 'paypal_status' => $status])]);
+
+        if ($status === 'COMPLETED') {
+            $this->fulfillOrder($tx->id);
+        }
+
+        return redirect('/cart');
+    }
+
     public function stripeWebhook(Request $request)
     {
         $payload = $request->getContent();
@@ -296,6 +448,39 @@ class CheckoutController extends Controller
                 }
             }
         });
+    }
+
+    private function paypalBaseUrl(): string
+    {
+        $mode = (string) (Config::get('services.paypal.mode') ?? env('PAYPAL_MODE', 'sandbox'));
+        return $mode === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com';
+    }
+
+    private function paypalAccessToken(): string
+    {
+        $clientId = Config::get('services.paypal.client_id') ?? env('PAYPAL_CLIENT_ID');
+        $secret = Config::get('services.paypal.secret') ?? env('PAYPAL_SECRET');
+        if (!$clientId || !$secret) {
+            abort(500, 'PayPal no configurado');
+        }
+
+        $baseUrl = $this->paypalBaseUrl();
+        $resp = Http::withBasicAuth($clientId, $secret)
+            ->asForm()
+            ->post("{$baseUrl}/v1/oauth2/token", [
+                'grant_type' => 'client_credentials',
+            ]);
+
+        if (!$resp->successful()) {
+            abort(502, 'Error autenticando con PayPal');
+        }
+
+        $json = $resp->json();
+        $token = $json['access_token'] ?? null;
+        if (!$token) {
+            abort(502, 'Token PayPal inválido');
+        }
+        return (string) $token;
     }
 
     private function flattenPayload(array $payload): array

@@ -16,7 +16,7 @@ class EventController extends Controller
     {
         $locale = app()->getLocale();
 
-        return Inertia::render('Tickets/Index', [
+        return Inertia::render('Events/Index', [
             'events' => Event::query()
                 ->whereNull('parent_event_id')
                 ->active()
@@ -44,7 +44,7 @@ class EventController extends Controller
      */
     public function show(Event $event)
     {
-        $event->load(['subevents.ticketTypes', 'sponsors', 'programItems']);
+        $event->load(['ticketTypes', 'subevents.ticketTypes', 'sponsors', 'programItems']);
 
         if (!$event->is_active || ($event->end_at && $event->end_at->lt(now()))) {
             abort(404);
@@ -83,6 +83,25 @@ class EventController extends Controller
                             'description' => $p->description,
                         ];
                     }),
+                'ticket_types' => $event->ticketTypes
+                    ->sortBy('code')
+                    ->values()
+                    ->map(function ($t) {
+                        if (!$t->is_active) {
+                            return null;
+                        }
+                        return [
+                            'id' => $t->id,
+                            'code' => $t->code,
+                            'price' => (string) $t->price,
+                            'stock' => (int) $t->stock,
+                            'is_active' => (bool) $t->is_active,
+                            'description' => $t->description,
+                            'legal_terms' => $t->legal_terms,
+                        ];
+                    })
+                    ->filter()
+                    ->values(),
                 'subevents' => $event->subevents
                     ->filter(fn (Event $s) => $s->is_active && (!$s->end_at || $s->end_at->gte(now())))
                     ->sortBy('start_at')

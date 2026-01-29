@@ -10,6 +10,10 @@ export default function Index({ tickets }) {
       await axios.post(route('cart.items.add'), { kind: 'ticket', event_ticket_type_id: ticketTypeId, quantity: 1 });
       alert('Añadido al carrito');
     } catch (e) {
+      if (e?.response?.status === 401) {
+        window.location.href = route('login');
+        return;
+      }
       alert(e?.response?.data?.message ?? 'No se pudo añadir');
     } finally {
       setAdding(null);

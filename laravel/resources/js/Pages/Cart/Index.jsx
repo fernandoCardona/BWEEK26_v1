@@ -61,6 +61,25 @@ export default function Index({ cart: initialCart }) {
         }
     };
 
+    const checkoutPaypal = async () => {
+        setError(null);
+        setSuccess(null);
+        setProcessing(true);
+        try {
+            const res = await axios.post(route('checkout.paypal'));
+            const url = res.data?.url;
+            if (url) {
+                window.location.href = url;
+            } else {
+                setError('No se pudo iniciar PayPal');
+            }
+        } catch (e) {
+            setError(e?.response?.data?.message ?? 'No se pudo iniciar PayPal');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
     return (
         <Layout>
             <div className="pt-32 pb-20 px-6">
@@ -120,9 +139,14 @@ export default function Index({ cart: initialCart }) {
                                     <div className="text-2xl font-black">{total.toFixed(2)}€</div>
                                 </div>
 
-                                <button type="button" className="btn-primary w-full py-3 text-sm" disabled={processing} onClick={checkout}>
-                                    Finalizar compra
-                                </button>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <button type="button" className="btn-primary w-full py-3 text-sm" disabled={processing} onClick={checkout}>
+                                        Pagar con tarjeta (Stripe)
+                                    </button>
+                                    <button type="button" className="btn-secondary w-full py-3 text-sm" disabled={processing} onClick={checkoutPaypal}>
+                                        Pagar con PayPal
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>
