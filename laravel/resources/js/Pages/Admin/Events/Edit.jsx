@@ -6,7 +6,7 @@ import { FiChevronDown, FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { formatDMYFromYMD, normalizeTimeHM } from '@/utils/date';
 import { createPortal } from 'react-dom';
 
-export default function Edit({ event, parents, defaults, can }) {
+export default function Edit({ event, parents, defaults, can, agenda }) {
     const isCreate = !event;
     const [confirmDialog, setConfirmDialog] = useState(null);
     useLockBodyScroll(!!confirmDialog);
@@ -25,6 +25,20 @@ export default function Edit({ event, parents, defaults, can }) {
     const parentEventObj = isSubeventEntity ? (parents ?? []).find((p) => p.id === event?.parent_event_id) ?? null : null;
     const parentEventDisplayName = parentEventObj ? displayName(parentEventObj?.name) || parentEventObj?.id : '';
     const currentEventDayYmd = event?.event_date_ymd || (event?.start_at ? String(event.start_at).slice(0, 10) : '') || '';
+    const agendaLocations = agenda?.locations ?? [];
+    const agendaTemplates = agenda?.templates ?? [];
+
+    const agendaLocationsById = useMemo(() => {
+        const out = new Map();
+        for (const l of agendaLocations ?? []) out.set(l.id, l);
+        return out;
+    }, [agendaLocations]);
+
+    const agendaTemplatesById = useMemo(() => {
+        const out = new Map();
+        for (const t of agendaTemplates ?? []) out.set(t.id, t);
+        return out;
+    }, [agendaTemplates]);
 
     const getHashDay = () => {
         if (typeof window === 'undefined') return null;
@@ -110,6 +124,8 @@ export default function Edit({ event, parents, defaults, can }) {
     });
 
     const subeventForm = useForm({
+        agenda_template_id: '',
+        agenda_location_id: '',
         day_date: '',
         start_time: '',
         end_time: '',
@@ -289,12 +305,35 @@ export default function Edit({ event, parents, defaults, can }) {
         });
     };
 
+    const applyAgendaLocationToSubevent = (locationId, { overwrite = false } = {}) => {
+        const loc = agendaLocationsById.get(locationId);
+        if (!loc) return;
+        if (overwrite || !subeventForm.data.location) subeventForm.setData('location', loc.location || '');
+        if (overwrite || !subeventForm.data.address) subeventForm.setData('address', loc.address || '');
+        if (overwrite || !subeventForm.data.google_maps_url) subeventForm.setData('google_maps_url', loc.google_maps_url || '');
+    };
+
+    const applyAgendaTemplateToSubevent = (templateId) => {
+        const tpl = agendaTemplatesById.get(templateId);
+        if (!tpl) return;
+
+        subeventForm.setData('name', tpl.name || '');
+        subeventForm.setData('description', tpl.description || '');
+
+        if (tpl.agenda_location_id) {
+            subeventForm.setData('agenda_location_id', tpl.agenda_location_id);
+            applyAgendaLocationToSubevent(tpl.agenda_location_id, { overwrite: true });
+        }
+    };
+
     const openCreateSubevent = (dayDate) => {
         if (!event || !dayDate) return;
         setHashDay(dayDate);
         setDayEditOpen(null);
         subeventForm.reset();
         subeventForm.setData({
+            agenda_template_id: '',
+            agenda_location_id: '',
             day_date: dayDate || '',
             start_time: '',
             end_time: '',
@@ -937,6 +976,31 @@ export default function Edit({ event, parents, defaults, can }) {
                             error={form.errors.description}
                         />
                         <Field label="Dirección" value={form.data.address} onChange={(e) => form.setData('address', e.target.value)} error={form.errors.address} />
+                        {agendaLocations.length > 0 && (
+                            <div>
+                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Usar localización frecuente</label>
+                                <select
+                                    className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none"
+                                    value=""
+                                    onChange={(e) => {
+                                        const id = e.target.value;
+                                        if (!id) return;
+                                        const loc = agendaLocationsById.get(id);
+                                        if (!loc) return;
+                                        form.setData('location', loc.location || '');
+                                        form.setData('address', loc.address || '');
+                                        form.setData('google_maps_url', loc.google_maps_url || '');
+                                    }}
+                                >
+                                    <option value="">{'—'}</option>
+                                    {agendaLocations.map((l) => (
+                                        <option key={l.id} value={l.id}>
+                                            {l.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field
                                 label="Localización (pueblo/ciudad, país)"
@@ -1485,6 +1549,47 @@ export default function Edit({ event, parents, defaults, can }) {
                                                                         {subeventForm.errors.day_date && <div className="text-xs text-red-400 mb-3">{subeventForm.errors.day_date}</div>}
 
                                                                         <div className="space-y-4">
+                                                                            {(agendaTemplates.length > 0 || agendaLocations.length > 0) && (
+                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                                    {agendaTemplates.length > 0 && (
+                                                                                        <div>
+                                                                                            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Plantilla (opcional)</label>
+                                                                                            <select
+                                                                                                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none"
+                                                                                                value={subeventForm.data.agenda_template_id}
+                                                                                                onChange={(e) => {
+                                                                                                    const id = e.target.value;
+                                                                                                    subeventForm.setData('agenda_template_id', id);
+                                                                                                    if (id) applyAgendaTemplateToSubevent(id);
+                                                                                                }}
+                                                                                            >
+                                                                                                <option value="">{'—'}</option>
+                                                                                                {agendaTemplates.map((t) => (
+                                                                                                    <option key={t.id} value={t.id}>
+                                                                                                        {t.name}
+                                                                                                    </option>
+                                                                                                ))}
+                                                                                            </select>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {agendaLocations.length > 0 && (
+                                                                                        <div>
+                                                                                            <CustomSelect
+                                                                                                label="Localización frecuente"
+                                                                                                value={subeventForm.data.agenda_location_id}
+                                                                                                options={[
+                                                                                                    { value: '', label: '—' },
+                                                                                                    ...agendaLocations.map((l) => ({ value: l.id, label: l.name })),
+                                                                                                ]}
+                                                                                                onChange={(id) => {
+                                                                                                    subeventForm.setData('agenda_location_id', id);
+                                                                                                    if (id) applyAgendaLocationToSubevent(id, { overwrite: true });
+                                                                                                }}
+                                                                                            />
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
                                                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                                                 <div>
                                                                                     <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Inicio</label>
@@ -1675,64 +1780,65 @@ export default function Edit({ event, parents, defaults, can }) {
                                                                     </div>
                                                                 )}
 
-                                                                {daySubevents.map((s) => {
-                                                                    const isItemOpen = openProgramItem === `se:${s.id}`;
-                                                                    const ed = subeventEdits?.[s.id];
-                                                                    const ticketsEnabled = !!subeventTicketsEnabled?.[s.id];
-                                                                    const ticketDraft = ticketDrafts?.[s.id] ?? { code: 'vip', price: '', stock: 0, description: '', legal_terms: '', image: null };
-                                                                    const ticketImagePreview = ticketDraft?.image instanceof File ? URL.createObjectURL(ticketDraft.image) : null;
+                                                                <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1 bweek-scrollbar">
+                                                                    {daySubevents.map((s) => {
+                                                                        const isItemOpen = openProgramItem === `se:${s.id}`;
+                                                                        const ed = subeventEdits?.[s.id];
+                                                                        const ticketsEnabled = !!subeventTicketsEnabled?.[s.id];
+                                                                        const ticketDraft = ticketDrafts?.[s.id] ?? { code: 'vip', price: '', stock: 0, description: '', legal_terms: '', image: null };
+                                                                        const ticketImagePreview = ticketDraft?.image instanceof File ? URL.createObjectURL(ticketDraft.image) : null;
 
-                                                                    return (
-                                                                        <div key={s.id} id={`subevent-${s.id}`} className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
-                                                                            <div className="w-full px-5 py-4 flex items-center justify-between gap-4">
-                                                                                <button
-                                                                                    type="button"
-                                                                                    className="min-w-0 flex-1 text-left"
-                                                                                    onClick={() => setOpenProgramItem((cur) => (cur === `se:${s.id}` ? null : `se:${s.id}`))}
-                                                                                >
-                                                                                    <div className="min-w-0">
-                                                                                        <div className="font-black truncate">{s.name}</div>
-                                                                                        <div className="text-xs text-gray-500 mt-1">
-                                                                                            {formatIsoTimeRange(s.start_at, s.end_at)}
-                                                                                            {(s.ticket_types?.length ?? 0) > 0 ? ' • tickets' : ''}
-                                                                                            {s.external_ticket_url ? ' • externo' : ''}
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </button>
-                                                                                    <div className="flex items-center gap-3">
+                                                                        return (
+                                                                            <div key={s.id} id={`subevent-${s.id}`} className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
+                                                                                <div className="w-full px-5 py-4 flex items-center justify-between gap-4">
                                                                                     <button
                                                                                         type="button"
-                                                                                        className="icon-btn icon-btn-gradient"
-                                                                                        aria-label="Editar subevento"
-                                                                                        onClick={() => {
-                                                                                            setOpenProgramDay(day);
-                                                                                            setOpenProgramItem(`se:${s.id}`);
-                                                                                            setHashDay(day);
-                                                                                        }}
-                                                                                    >
-                                                                                        <FiEdit2 size={23} />
-                                                                                    </button>
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        className="icon-btn icon-btn-gradient text-red-500 hover:text-red-400"
-                                                                                        aria-label="Eliminar subevento"
-                                                                                        onClick={() => deleteSubevent(s.id)}
-                                                                                    >
-                                                                                            <FiTrash2 size={26} />
-                                                                                    </button>
-                                                                                    <button
-                                                                                        type="button"
-                                                                                        className="icon-btn icon-btn-gradient"
-                                                                                        aria-label="Abrir/cerrar subevento"
+                                                                                        className="min-w-0 flex-1 text-left"
                                                                                         onClick={() => setOpenProgramItem((cur) => (cur === `se:${s.id}` ? null : `se:${s.id}`))}
                                                                                     >
-                                                                                        <FiChevronDown className={`transition-transform ${isItemOpen ? 'rotate-180' : ''}`} size={23} />
+                                                                                        <div className="min-w-0">
+                                                                                            <div className="font-black truncate">{s.name}</div>
+                                                                                            <div className="text-xs text-gray-500 mt-1">
+                                                                                                {formatIsoTimeRange(s.start_at, s.end_at)}
+                                                                                                {(s.ticket_types?.length ?? 0) > 0 ? ' • tickets' : ''}
+                                                                                                {s.external_ticket_url ? ' • externo' : ''}
+                                                                                            </div>
+                                                                                        </div>
                                                                                     </button>
+                                                                                    <div className="flex items-center gap-3">
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="icon-btn icon-btn-gradient"
+                                                                                            aria-label="Editar subevento"
+                                                                                            onClick={() => {
+                                                                                                setOpenProgramDay(day);
+                                                                                                setOpenProgramItem(`se:${s.id}`);
+                                                                                                setHashDay(day);
+                                                                                            }}
+                                                                                        >
+                                                                                            <FiEdit2 size={23} />
+                                                                                        </button>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="icon-btn icon-btn-gradient text-red-500 hover:text-red-400"
+                                                                                            aria-label="Eliminar subevento"
+                                                                                            onClick={() => deleteSubevent(s.id)}
+                                                                                        >
+                                                                                            <FiTrash2 size={26} />
+                                                                                        </button>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="icon-btn icon-btn-gradient"
+                                                                                            aria-label="Abrir/cerrar subevento"
+                                                                                            onClick={() => setOpenProgramItem((cur) => (cur === `se:${s.id}` ? null : `se:${s.id}`))}
+                                                                                        >
+                                                                                            <FiChevronDown className={`transition-transform ${isItemOpen ? 'rotate-180' : ''}`} size={23} />
+                                                                                        </button>
+                                                                                    </div>
                                                                                 </div>
-                                                                            </div>
 
-                                                                            {isItemOpen && (
-                                                                                <div className="px-5 pb-5 space-y-4">
+                                                                                {isItemOpen && (
+                                                                                    <div className="px-5 pb-5 space-y-4">
                                                                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                                                         <div>
                                                                                             <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Inicio</label>
@@ -2098,13 +2204,14 @@ export default function Edit({ event, parents, defaults, can }) {
                                                                                             </div>
                                                                                         </div>
                                                                                     )}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                })}
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                    {!daySubevents.length && openProgramItem !== 'new' && <div className="text-gray-400">Sin subeventos para este día.</div>}
+                                                                </div>
 
-                                                                {!daySubevents.length && openProgramItem !== 'new' && <div className="text-gray-400">Sin subeventos para este día.</div>}
                                                             </div>
                                                         </div>
                                                     )}

@@ -51,6 +51,34 @@ services:
     command: >
       postgres -c shared_buffers=256MB -c effective_cache_size=1GB -c max_connections=200 -c random_page_cost=1.1 -c effective_io_concurrency=200 -c work_mem=4MB -c maintenance_work_mem=64MB -c checkpoint_completion_target=0.9 -c wal_buffers=16MB -c default_statistics_target=100
 
+  pg_backup:
+    image: postgres:16-alpine
+    container_name: bweek_pg_backup
+    restart: unless-stopped
+    networks:
+      - backend_ai_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: ${DB_USERNAME:-bweek_admin}
+      PGPASSWORD: ${DB_PASSWORD:-changeme_secure_password}
+      TZ: Europe/Madrid
+    volumes:
+      - ./postgres/backups:/backups
+    command: >
+      sh -lc "mkdir -p /backups &&
+        while true; do
+          ts=$$(date +%Y%m%d_%H%M%S);
+          pg_dump -Fc -d ecommerce_db > /backups/ecommerce_db_$${ts}.dump &&
+          pg_dump -Fc -d n8n_db > /backups/n8n_db_$${ts}.dump &&
+          pg_dump -Fc -d ai_memory_db > /backups/ai_memory_db_$${ts}.dump;
+          ls -1t /backups/*.dump 2>/dev/null | tail -n +61 | xargs -r rm -f;
+          sleep 600;
+        done"
+
   # ==========================================
   # REDIS 7
   # Caché, sesiones, colas y rate limiting
@@ -107,6 +135,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    command: >
+      sh -lc "mkdir -p storage/app/private/backups storage/app/private/imports &&
+        chown -R www-data:www-data storage bootstrap/cache &&
+        chmod -R 775 storage bootstrap/cache &&
+        php-fpm"
 
   # ==========================================
   # NGINX (Web Server para Laravel)

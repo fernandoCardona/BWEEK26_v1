@@ -7,6 +7,8 @@ use App\Models\Event;
 use App\Models\EventProgramItem;
 use App\Models\EventSponsor;
 use App\Models\EventTicketType;
+use App\Models\AgendaLocation;
+use App\Models\AgendaSubeventTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -64,9 +66,12 @@ class EventsController extends Controller
             ->orderByDesc('start_at')
             ->get(['id', 'name']);
 
+        $agenda = $this->agendaProps();
+
         return Inertia::render('Admin/Events/Edit', [
             'event' => null,
             'parents' => $parents,
+            'agenda' => $agenda,
             'defaults' => [
                 'parent_event_id' => $parentEventId,
             ],
@@ -87,18 +92,56 @@ class EventsController extends Controller
             ->get(['id', 'name']);
 
         $role = $request->user()?->role;
+        $agenda = $this->agendaProps();
 
         return Inertia::render('Admin/Events/Edit', [
             'event' => $this->mapEvent($event, true),
             'parents' => $parents,
+            'agenda' => $agenda,
             'defaults' => null,
             'can' => [
                 'delete' => $role === 'super_admin',
                 'toggle_active' => $role === 'super_admin',
-                'manage_ticket_types' => $role === 'super_admin',
+                'manage_ticket_types' => in_array($role, ['super_admin', 'admin'], true),
                 'manage_program' => in_array($role, ['super_admin', 'admin'], true),
             ],
         ]);
+    }
+
+    private function agendaProps(): array
+    {
+        $locale = app()->getLocale();
+        $orderLocale = in_array($locale, ['es', 'en'], true) ? $locale : 'es';
+
+        $locations = AgendaLocation::query()
+            ->where('is_active', true)
+            ->orderByRaw("lower(coalesce(name->>'{$orderLocale}', name->>'es', name->>'en', '')) asc")
+            ->get()
+            ->map(fn ($l) => [
+                'id' => $l->id,
+                'name' => $l->name[$locale] ?? ($l->name['es'] ?? ''),
+                'location' => $l->location[$locale] ?? ($l->location['es'] ?? ''),
+                'address' => $l->address,
+                'google_maps_url' => $l->google_maps_url,
+            ])
+            ->values();
+
+        $templates = AgendaSubeventTemplate::query()
+            ->where('is_active', true)
+            ->orderByRaw("lower(coalesce(name->>'{$orderLocale}', name->>'es', name->>'en', '')) asc")
+            ->get()
+            ->map(fn ($t) => [
+                'id' => $t->id,
+                'name' => $t->name[$locale] ?? ($t->name['es'] ?? ''),
+                'description' => $t->description[$locale] ?? ($t->description['es'] ?? ''),
+                'agenda_location_id' => $t->agenda_location_id,
+            ])
+            ->values();
+
+        return [
+            'locations' => $locations,
+            'templates' => $templates,
+        ];
     }
 
     public function store(Request $request)
@@ -835,6 +878,10 @@ class EventsController extends Controller
 
     private function syncProgramItems(Request $request, Event $event): void
     {
+        if (!$request->has('program_items')) {
+            return;
+        }
+
         $items = (array) $request->input('program_items', []);
 
         $normalized = [];
@@ -892,12 +939,6 @@ class EventsController extends Controller
                 ]
             );
         }
-
-        EventProgramItem::query()
-            ->where('event_id', $event->id)
-            ->when(count($keepIds) > 0, fn ($q) => $q->whereNotIn('id', $keepIds))
-            ->when(count($keepIds) === 0, fn ($q) => $q)
-            ->delete();
     }
 
     private function handleFiles(Request $request, Event $event): void

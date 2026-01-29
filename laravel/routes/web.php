@@ -100,6 +100,11 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     Route::get('/dashboard', AdminDashboardController::class)->name('admin.dashboard');
     Route::get('/ecommerce', [AdminEcommerceController::class, 'index'])->name('admin.ecommerce.index');
     Route::get('/ecommerce/warehouse', [AdminEcommerceController::class, 'warehouse'])->name('admin.ecommerce.warehouse');
+    Route::get('/agenda', [\App\Http\Controllers\Admin\AgendaController::class, 'index'])->name('admin.agenda.index');
+    Route::post('/agenda/locations', [\App\Http\Controllers\Admin\AgendaController::class, 'storeLocation'])->name('admin.agenda.locations.store');
+    Route::patch('/agenda/locations/{location}', [\App\Http\Controllers\Admin\AgendaController::class, 'updateLocation'])->name('admin.agenda.locations.update');
+    Route::post('/agenda/templates', [\App\Http\Controllers\Admin\AgendaController::class, 'storeTemplate'])->name('admin.agenda.templates.store');
+    Route::patch('/agenda/templates/{template}', [\App\Http\Controllers\Admin\AgendaController::class, 'updateTemplate'])->name('admin.agenda.templates.update');
     Route::get('/products', [AdminProductsController::class, 'index'])->name('admin.products.index');
     Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events.index');
     Route::post('/events/{event}/subevents', [AdminEventsController::class, 'storeSubevent'])->name('admin.events.subevents.store');
@@ -111,6 +116,8 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
         Route::get('/events/create', [AdminEventsController::class, 'create'])->name('admin.events.create');
         Route::post('/events', [AdminEventsController::class, 'store'])->name('admin.events.store');
         Route::delete('/events/{event}', [AdminEventsController::class, 'destroy'])->name('admin.events.destroy');
+        Route::delete('/agenda/locations/{location}', [\App\Http\Controllers\Admin\AgendaController::class, 'destroyLocation'])->name('admin.agenda.locations.destroy');
+        Route::delete('/agenda/templates/{template}', [\App\Http\Controllers\Admin\AgendaController::class, 'destroyTemplate'])->name('admin.agenda.templates.destroy');
         Route::post('/events/{event}/ticket-types', [AdminEventsController::class, 'upsertTicketType'])->name('admin.events.ticket-types.upsert');
         Route::delete('/events/{event}/ticket-types/{ticketType}', [AdminEventsController::class, 'destroyTicketType'])->name('admin.events.ticket-types.destroy');
         Route::delete('/events/{event}/ticket-types/{ticketType}/image', [AdminEventsController::class, 'destroyTicketTypeImage'])->name('admin.events.ticket-types.image.destroy');
@@ -125,13 +132,7 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
         Route::delete('/events/{event}/logo', [AdminEventsController::class, 'destroyEventLogo'])->name('admin.events.logo.destroy');
         Route::post('/events/{event}/flyer', [AdminEventsController::class, 'storeEventFlyer'])->name('admin.events.flyer.store');
         Route::delete('/events/{event}/flyer', [AdminEventsController::class, 'destroyEventFlyer'])->name('admin.events.flyer.destroy');
-        Route::get('/products/create', [AdminProductsController::class, 'create'])->name('admin.products.create');
-        Route::post('/products', [AdminProductsController::class, 'store'])->name('admin.products.store');
         Route::delete('/products/{product}', [AdminProductsController::class, 'destroy'])->name('admin.products.destroy');
-    Route::post('/products/categories', [AdminProductsController::class, 'storeCategory'])->name('admin.products.categories.store');
-    Route::post('/products/{product}/variants', [AdminProductsController::class, 'storeVariant'])->name('admin.products.variants.store');
-    Route::patch('/products/{product}/variants/{variant}', [AdminProductsController::class, 'updateVariant'])->name('admin.products.variants.update');
-    Route::delete('/products/{product}/variants/{variant}', [AdminProductsController::class, 'destroyVariant'])->name('admin.products.variants.destroy');
     });
     Route::get('/products/{product}', [AdminProductsController::class, 'edit'])->name('admin.products.edit');
     Route::patch('/products/{product}', [AdminProductsController::class, 'update'])->name('admin.products.update');

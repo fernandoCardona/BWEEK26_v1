@@ -89,3 +89,26 @@
         @apply hover:text-transparent hover:bg-clip-text hover:bg-gradient-to-r hover:from-accent-primary hover:via-accent-secondary hover:to-accent-tertiary;
     }
 }
+
+@layer utilities {
+    .bweek-scrollbar {
+        scrollbar-width: thin;
+        scrollbar-color: rgba(241, 194, 50, 0.45) rgba(255, 255, 255, 0.06);
+    }
+    .bweek-scrollbar::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+    }
+    .bweek-scrollbar::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.06);
+        border-radius: 9999px;
+    }
+    .bweek-scrollbar::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, rgba(241, 194, 50, 0.55) 0%, rgba(204, 122, 0, 0.55) 55%, rgba(91, 58, 42, 0.55) 100%);
+        border-radius: 9999px;
+        border: 2px solid rgba(10, 10, 10, 0.75);
+    }
+    .bweek-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, rgba(241, 194, 50, 0.75) 0%, rgba(204, 122, 0, 0.75) 55%, rgba(91, 58, 42, 0.75) 100%);
+    }
+}
