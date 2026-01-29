@@ -40,29 +40,47 @@ class ProductController extends Controller
             ->where('is_active', true)
             ->with([
                 'event' => function ($q) {
-                    $q->select(['id', 'parent_event_id', 'name', 'is_active']);
+                    $q->select(['id', 'parent_event_id', 'name', 'is_active', 'banner_path', 'logo_path', 'flyer_path']);
                 },
                 'event.parent' => function ($q) {
-                    $q->select(['id', 'name']);
+                    $q->select(['id', 'name', 'banner_path', 'logo_path', 'flyer_path']);
+                },
+                'ticketTemplate' => function ($q) {
+                    $q->select(['id', 'image_path']);
                 },
             ])
             ->orderBy('price')
             ->get()
             ->map(function (EventTicketType $t) {
+                $imageFrom = function ($path) {
+                    if (!$path) return null;
+                    return Storage::disk('public')->url($path);
+                };
+                $eventImage = null;
+                if ($t->event) {
+                    $eventImage = $imageFrom($t->event->flyer_path) ?? $imageFrom($t->event->banner_path) ?? $imageFrom($t->event->logo_path);
+                    if (!$eventImage && $t->event->parent) {
+                        $eventImage = $imageFrom($t->event->parent->flyer_path) ?? $imageFrom($t->event->parent->banner_path) ?? $imageFrom($t->event->parent->logo_path);
+                    }
+                }
+                $ticketImage = $imageFrom(optional($t->ticketTemplate)->image_path) ?? $imageFrom($t->image_path);
                 return [
                     'id' => $t->id,
                     'code' => $t->code,
                     'price' => (string) $t->price,
                     'stock' => (int) $t->stock,
                     'is_active' => (bool) $t->is_active,
+                    'image_url' => $ticketImage,
                     'event' => $t->event ? [
                         'id' => $t->event->id,
                         'parent_event_id' => $t->event->parent_event_id,
                         'name' => $t->event->name,
                         'is_active' => (bool) $t->event->is_active,
+                        'image_url' => $eventImage,
                         'parent' => $t->event->parent ? [
                             'id' => $t->event->parent->id,
                             'name' => $t->event->parent->name,
+                            'image_url' => $imageFrom($t->event->parent->flyer_path) ?? $imageFrom($t->event->parent->banner_path) ?? $imageFrom($t->event->parent->logo_path),
                         ] : null,
                     ] : null,
                 ];

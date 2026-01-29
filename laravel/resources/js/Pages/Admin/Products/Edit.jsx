@@ -1,12 +1,14 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import AdminLayout from '@/Layouts/AdminLayout';
 import { Link, router, useForm } from '@inertiajs/react';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 import axios from 'axios';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
+import SwitchToggle from '@/Components/SwitchToggle';
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
 const COLORS = ['Negro', 'Blanco', 'Gris', 'Azul', 'Rojo', 'Verde', 'Amarillo', 'Naranja', 'Morado', 'Rosa', 'Beige', 'Marrón'];
+const MAX_GALLERY_IMAGES = 5;
 
 export default function Edit({ product, categories = [], can }) {
     const isCreate = !product;
@@ -16,8 +18,11 @@ export default function Edit({ product, categories = [], can }) {
     const imageInputRef = useRef(null);
     const galleryInputRef = useRef(null);
     const [gallery, setGallery] = useState(product?.images ?? []);
+    const [galleryDraft, setGalleryDraft] = useState([]);
+    const galleryDraftRef = useRef([]);
     const [primaryUrl, setPrimaryUrl] = useState(product?.image_url ?? null);
     const [variants, setVariants] = useState(product?.variants ?? []);
+    const [hasSizes, setHasSizes] = useState((product?.variants ?? []).length > 0);
     const [variantDraft, setVariantDraft] = useState({
         size: SIZES[0],
         color: COLORS[0],
@@ -34,26 +39,67 @@ export default function Edit({ product, categories = [], can }) {
         stock: product?.stock ?? 0,
         is_active: product?.is_active ?? true,
         image: null,
+        gallery_images: [],
         variants: [],
     });
+
+    useEffect(() => {
+        galleryDraftRef.current = galleryDraft;
+    }, [galleryDraft]);
+
+    useEffect(() => {
+        return () => {
+            for (const img of galleryDraftRef.current ?? []) {
+                if (img?.url) URL.revokeObjectURL(img.url);
+            }
+        };
+    }, []);
+
+    const variantsTotalStock = useMemo(() => (variants ?? []).reduce((sum, v) => sum + Number(v.stock || 0), 0), [variants]);
+    const variantsMinPrice = useMemo(() => {
+        const nums = (variants ?? [])
+            .map((v) => Number(v.price ?? 0))
+            .filter((n) => Number.isFinite(n) && n >= 0);
+        if (!nums.length) return null;
+        return Math.min(...nums);
+    }, [variants]);
 
     const imagePreview = useMemo(() => {
         if (form.data.image instanceof File) return URL.createObjectURL(form.data.image);
         return primaryUrl;
     }, [form.data.image, primaryUrl]);
 
+    const pickGalleryFiles = (files) => {
+        const list = Array.from(files ?? []).filter((f) => f && String(f.type || '').startsWith('image/'));
+        if (!list.length) return;
+        setGalleryDraft((prev) => {
+            const remaining = Math.max(0, MAX_GALLERY_IMAGES - prev.length);
+            const next = list.slice(0, remaining).map((file) => ({
+                id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+                file,
+                url: URL.createObjectURL(file),
+            }));
+            return [...prev, ...next];
+        });
+    };
+
     const submit = (e) => {
         e.preventDefault();
         if (isCreate) {
             form.transform((data) => ({
                 ...data,
-                variants: (variants ?? []).map((v) => ({
-                    size: v.size ?? null,
-                    color: v.color ?? null,
-                    price: Number(v.price ?? data.price ?? 0),
-                    stock: Number(v.stock ?? 0),
-                    is_active: v.is_active ?? true,
-                })),
+                price: hasSizes ? Number(variantsMinPrice ?? data.price ?? 0) : data.price,
+                stock: hasSizes ? Number(variantsTotalStock ?? 0) : data.stock,
+                gallery_images: galleryDraft.map((x) => x.file),
+                variants: hasSizes
+                    ? (variants ?? []).map((v) => ({
+                          size: v.size ?? null,
+                          color: v.color ?? null,
+                          price: Number(v.price ?? data.price ?? 0),
+                          stock: Number(v.stock ?? 0),
+                          is_active: v.is_active ?? true,
+                      }))
+                    : [],
             }));
             form.post(route('admin.products.store'), {
                 forceFormData: true,
@@ -72,15 +118,33 @@ export default function Edit({ product, categories = [], can }) {
 
     const uploadGalleryImage = async (file) => {
         if (!file) return;
+        if ((gallery ?? []).length >= MAX_GALLERY_IMAGES) return;
         const fd = new FormData();
         fd.append('image', file);
         const res = await axios.post(route('admin.products.images.store', product.id), fd, { headers: { 'Content-Type': 'multipart/form-data' } });
         setGallery((prev) => [...prev, res.data]);
     };
 
+    const uploadGalleryImages = async (files) => {
+        const list = Array.from(files ?? []).filter((f) => f && String(f.type || '').startsWith('image/'));
+        if (!list.length) return;
+        for (const f of list) {
+            if ((gallery ?? []).length >= MAX_GALLERY_IMAGES) break;
+            await uploadGalleryImage(f);
+        }
+    };
+
     const deleteGalleryImage = async (imageId) => {
         await axios.delete(route('admin.products.images.destroy', [product.id, imageId]));
         setGallery((prev) => prev.filter((g) => g.id !== imageId));
+    };
+
+    const removeDraftImage = (id) => {
+        setGalleryDraft((prev) => {
+            const item = prev.find((x) => x.id === id);
+            if (item?.url) URL.revokeObjectURL(item.url);
+            return prev.filter((x) => x.id !== id);
+        });
     };
 
     const createVariant = async () => {
@@ -157,25 +221,81 @@ export default function Edit({ product, categories = [], can }) {
 
                 <div className="glass-card p-6">
                     <form onSubmit={submit} className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Imagen</label>
-                            <input ref={imageInputRef} type="file" className="hidden" onChange={(e) => form.setData('image', e.target.files?.[0] ?? null)} />
-                            <ImageBox
-                                previewUrl={imagePreview}
-                                onPick={() => imageInputRef.current?.click()}
-                                onDropFile={(f) => form.setData('image', f)}
-                                onRemove={async () => {
-                                    if (form.data.image instanceof File) {
-                                        form.setData('image', null);
-                                    } else if (primaryUrl && product?.id) {
-                                        await axios.delete(route('admin.products.image.destroy', product.id));
-                                        setPrimaryUrl(null);
-                                    }
-                                }}
-                                variant="rect"
-                                boxClass="w-32 h-32"
-                            />
-                            {form.errors.image && <div className="text-xs text-red-400 mt-2">{form.errors.image}</div>}
+                        <div className="flex flex-col md:flex-row md:items-start gap-8">
+                            <div className="shrink-0">
+                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Imagen</label>
+                                <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => form.setData('image', e.target.files?.[0] ?? null)} />
+                                <ImageBox
+                                    previewUrl={imagePreview}
+                                    onPick={() => imageInputRef.current?.click()}
+                                    onDropFile={(f) => form.setData('image', f)}
+                                    onRemove={async () => {
+                                        if (form.data.image instanceof File) {
+                                            form.setData('image', null);
+                                        } else if (primaryUrl && product?.id) {
+                                            await axios.delete(route('admin.products.image.destroy', product.id));
+                                            setPrimaryUrl(null);
+                                        }
+                                    }}
+                                    variant="rect"
+                                    boxClass="w-32 h-32"
+                                />
+                                {form.errors.image && <div className="text-xs text-red-400 mt-2">{form.errors.image}</div>}
+                            </div>
+
+                            <div className="flex-1 w-full">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                    <div className="p-4 rounded-2xl border border-white/10 bg-black/30">
+                                        <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-2">Precio</div>
+                                        <div className="text-2xl font-black">
+                                            {hasSizes ? `${Number(variantsMinPrice ?? 0).toFixed(2)}€` : `${Number(form.data.price || 0).toFixed(2)}€`}
+                                        </div>
+                                        <div className="text-xs text-gray-500 mt-1">{hasSizes ? 'Mínimo de variantes' : 'Precio base'}</div>
+                                    </div>
+                                    <div className="p-4 rounded-2xl border border-white/10 bg-black/30">
+                                        <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-2">Stock total</div>
+                                        <div className="text-2xl font-black">{hasSizes ? variantsTotalStock : Number(form.data.stock || 0)}</div>
+                                        <div className="text-xs text-gray-500 mt-1">{hasSizes ? 'Suma de variantes' : 'Stock único'}</div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Galería (máx. {MAX_GALLERY_IMAGES})</label>
+                                    <input
+                                        ref={galleryInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            if (isCreate) pickGalleryFiles(e.target.files);
+                                            else uploadGalleryImages(e.target.files);
+                                            if (e.target) e.target.value = '';
+                                        }}
+                                    />
+                                    <div className="flex items-center gap-4 flex-wrap">
+                                        {isCreate ? (
+                                            <>
+                                                {galleryDraft.length < MAX_GALLERY_IMAGES ? (
+                                                    <ImageBox previewUrl={null} onPick={() => galleryInputRef.current?.click()} onDropFile={(f) => pickGalleryFiles([f])} variant="rect" />
+                                                ) : null}
+                                                {galleryDraft.map((img) => (
+                                                    <ImageBox key={img.id} previewUrl={img.url} onPick={() => {}} onDropFile={() => {}} onRemove={() => removeDraftImage(img.id)} variant="rect" />
+                                                ))}
+                                            </>
+                                        ) : (
+                                            <>
+                                                {gallery.length < MAX_GALLERY_IMAGES ? (
+                                                    <ImageBox previewUrl={null} onPick={() => galleryInputRef.current?.click()} onDropFile={(f) => uploadGalleryImage(f)} variant="rect" />
+                                                ) : null}
+                                                {gallery.map((img) => (
+                                                    <ImageBox key={img.id} previewUrl={img.url} onPick={() => {}} onDropFile={() => {}} onRemove={() => deleteGalleryImage(img.id)} variant="rect" />
+                                                ))}
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <Field label="Nombre" value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} error={form.errors.name} />
@@ -204,52 +324,12 @@ export default function Edit({ product, categories = [], can }) {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Field label="Precio (€)" value={form.data.price} onChange={(e) => form.setData('price', e.target.value)} error={form.errors.price} />
-                            {variants.length ? (
-                                <div>
-                                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Stock total (variantes)</label>
-                                    <input
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white opacity-70"
-                                        value={(variants ?? []).reduce((sum, v) => sum + Number(v.stock || 0), 0)}
-                                        disabled
-                                    />
-                                </div>
-                            ) : (
-                                <Field
-                                    label="Stock"
-                                    value={form.data.stock}
-                                    onChange={(e) => form.setData('stock', e.target.value)}
-                                    error={form.errors.stock}
-                                    disabled={!can?.manage_stock}
-                                />
-                            )}
-                        </div>
-
-                        {!isCreate && (
-                            <div>
-                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Galería</label>
-                                <input ref={galleryInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => uploadGalleryImage(e.target.files?.[0])} />
-                                <div className="flex items-center gap-4 flex-wrap">
-                                    <ImageBox
-                                        previewUrl={null}
-                                        onPick={() => galleryInputRef.current?.click()}
-                                        onDropFile={(f) => uploadGalleryImage(f)}
-                                        variant="rect"
-                                    />
-                                    {gallery.map((img) => (
-                                        <ImageBox
-                                            key={img.id}
-                                            previewUrl={img.url}
-                                            onPick={() => {}}
-                                            onDropFile={() => {}}
-                                            onRemove={() => deleteGalleryImage(img.id)}
-                                            variant="rect"
-                                        />
-                                    ))}
-                                </div>
+                        {!hasSizes ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Field label="Precio (€)" value={form.data.price} onChange={(e) => form.setData('price', e.target.value)} error={form.errors.price} />
+                                <Field label="Stock" value={form.data.stock} onChange={(e) => form.setData('stock', e.target.value)} error={form.errors.stock} disabled={!can?.manage_stock} />
                             </div>
-                        )}
+                        ) : null}
 
                         <div className="pt-2">
                             <div className="flex items-center justify-between gap-4 mb-4">
@@ -257,10 +337,27 @@ export default function Edit({ product, categories = [], can }) {
                                     <h3 className="text-xl font-bold">Variantes</h3>
                                     <p className="text-sm text-gray-400">Crea stock por talla y color.</p>
                                 </div>
+                                <div className="shrink-0">
+                                    <SwitchToggle
+                                        checked={hasSizes}
+                                        onChange={(v) => {
+                                            if (!v) {
+                                                setVariants([]);
+                                            }
+                                            setHasSizes(v);
+                                        }}
+                                        disabled={!isCreate && (variants ?? []).length > 0}
+                                        labelOn="Producto con tallas"
+                                        labelOff="Producto sin tallas"
+                                    />
+                                </div>
                             </div>
 
+                            {!hasSizes ? <div className="text-gray-400">Este producto se vende sin tallas/colores.</div> : null}
+
+                            {hasSizes ? (
                             <div className="p-4 rounded-2xl border border-white/10 bg-white/5 mb-4">
-                                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Talla</label>
                                         <select
@@ -302,8 +399,25 @@ export default function Edit({ product, categories = [], can }) {
                                         <input
                                             className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
                                             value={variantDraft.stock}
-                                            onChange={(e) => setVariantDraft((d) => ({ ...d, stock: e.target.value }))}
+                                            onChange={(e) => {
+                                                const nextStock = e.target.value;
+                                                setVariantDraft((d) => {
+                                                    const n = Number(nextStock || 0);
+                                                    return { ...d, stock: nextStock, is_active: n > 0 ? d.is_active : false };
+                                                });
+                                            }}
                                         />
+                                    </div>
+                                    <div className="flex items-end justify-start">
+                                        <div className="pb-1">
+                                            <div className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Activo</div>
+                                            <SwitchToggle
+                                                checked={!!variantDraft.is_active}
+                                                disabled={Number(variantDraft.stock || 0) <= 0}
+                                                onChange={(v) => setVariantDraft((d) => ({ ...d, is_active: v }))}
+                                                showLabel={false}
+                                            />
+                                        </div>
                                     </div>
                                     <div className="flex items-end">
                                         <button type="button" className="btn-primary w-full px-6 py-3 text-sm" onClick={createVariant}>
@@ -312,11 +426,13 @@ export default function Edit({ product, categories = [], can }) {
                                     </div>
                                 </div>
                             </div>
+                            ) : null}
 
+                            {hasSizes ? (
                             <div className="space-y-3">
                                 {variants.map((v) => (
                                     <div key={v.id ?? v.temp_id} className="p-4 rounded-2xl border border-white/10 bg-white/5">
-                                        <div className="grid grid-cols-1 md:grid-cols-6 gap-3 items-end">
+                                        <div className="grid grid-cols-1 md:grid-cols-7 gap-3 items-end">
                                             <div>
                                                 <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Talla</label>
                                                 <select
@@ -358,7 +474,29 @@ export default function Edit({ product, categories = [], can }) {
                                                 <input
                                                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3"
                                                     value={v.stock ?? 0}
-                                                    onChange={(e) => setVariants((prev) => prev.map((x) => ((x.id ?? x.temp_id) === (v.id ?? v.temp_id) ? { ...x, stock: e.target.value } : x)))}
+                                                    onChange={(e) =>
+                                                        setVariants((prev) =>
+                                                            prev.map((x) => {
+                                                                if ((x.id ?? x.temp_id) !== (v.id ?? v.temp_id)) return x;
+                                                                const nextStock = e.target.value;
+                                                                const n = Number(nextStock || 0);
+                                                                return { ...x, stock: nextStock, is_active: n > 0 ? x.is_active : false };
+                                                            })
+                                                        )
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <div className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Activo</div>
+                                                <SwitchToggle
+                                                    checked={!!v.is_active}
+                                                    disabled={Number(v.stock || 0) <= 0}
+                                                    onChange={(val) =>
+                                                        setVariants((prev) =>
+                                                            prev.map((x) => ((x.id ?? x.temp_id) === (v.id ?? v.temp_id) ? { ...x, is_active: val } : x))
+                                                        )
+                                                    }
+                                                    showLabel={false}
                                                 />
                                             </div>
                                             <div className="flex items-center gap-3">
@@ -381,22 +519,10 @@ export default function Edit({ product, categories = [], can }) {
                                 ))}
                                 {!variants.length && <div className="text-gray-400">Añade variantes si vendes tallas/colores.</div>}
                             </div>
+                            ) : null}
                         </div>
 
-                        <label className="inline-flex items-center gap-3 text-sm text-gray-300 select-none">
-                            <span className="text-xs text-gray-400">{form.data.is_active ? 'Activo' : 'Inactivo'}</span>
-                            <span className="relative inline-flex items-center">
-                                <input
-                                    type="checkbox"
-                                    className="sr-only peer"
-                                    checked={!!form.data.is_active}
-                                    disabled={!can?.toggle_active}
-                                    onChange={(e) => form.setData('is_active', e.target.checked)}
-                                />
-                                <span className="w-11 h-6 bg-white/10 border border-white/10 rounded-full peer peer-checked:bg-accent-primary/60 peer-checked:border-accent-primary/40 transition-colors" />
-                                <span className="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full transition-transform peer-checked:translate-x-5" />
-                            </span>
-                        </label>
+                        <SwitchToggle checked={form.data.is_active} onChange={(v) => form.setData('is_active', v)} disabled={!can?.toggle_active} />
                         {form.errors.is_active && <div className="text-xs text-red-400">{form.errors.is_active}</div>}
 
                         <div className="flex items-center gap-3 pt-2">

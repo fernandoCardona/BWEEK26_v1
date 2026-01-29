@@ -34,6 +34,7 @@ class ProfileController extends Controller
             'country' => ['nullable', 'string', 'max:2'],
             'no_newsletter' => ['nullable', 'boolean'],
             'avatar' => ['nullable', 'image', 'max:2048'],
+            'remove_avatar' => ['nullable', 'boolean'],
         ]);
 
         $emailChanged = $data['email'] !== $user->email;
@@ -53,6 +54,13 @@ class ProfileController extends Controller
             'country' => strtoupper($data['country'] ?? '') ?: null,
             'newsletter_subscribed' => !((bool) ($data['no_newsletter'] ?? false)),
         ]);
+
+        if ((bool) ($data['remove_avatar'] ?? false) && !$request->hasFile('avatar')) {
+            if ($user->avatar_path) {
+                Storage::disk('public')->delete($user->avatar_path);
+            }
+            $user->avatar_path = null;
+        }
 
         if ($request->hasFile('avatar')) {
             if ($user->avatar_path) {

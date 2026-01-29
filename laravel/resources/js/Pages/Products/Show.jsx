@@ -159,13 +159,14 @@ export default function Show({ product }) {
                           <button
                             key={v.id}
                             type="button"
-                            className={`min-w-[44px] px-4 py-3 rounded-full border text-sm font-bold ${
+                            className={`min-w-[44px] px-4 py-3 rounded-full border text-sm font-bold flex flex-col items-center justify-center leading-tight ${
                               active ? 'border-accent-primary text-white' : 'border-white/15 text-gray-200'
                             } ${out ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'}`}
                             disabled={out}
                             onClick={() => setVariantId(v.id)}
                           >
-                            {v.size || '—'}
+                            <span>{v.size || '—'}</span>
+                            {out ? <span className="text-[10px] uppercase tracking-widest text-gray-400 mt-0.5">Agotado</span> : null}
                           </button>
                         );
                       })}

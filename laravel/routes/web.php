@@ -104,6 +104,9 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     Route::get('/ecommerce', [AdminEcommerceController::class, 'index'])->name('admin.ecommerce.index');
     Route::get('/ecommerce/warehouse', [AdminEcommerceController::class, 'warehouse'])->name('admin.ecommerce.warehouse');
     Route::patch('/ecommerce/tickets/{ticketType}', [AdminEcommerceController::class, 'updateTicketType'])->name('admin.ecommerce.tickets.update');
+    Route::post('/ecommerce/tickets', [AdminEcommerceController::class, 'storeTicket'])->name('admin.ecommerce.tickets.store');
+    Route::post('/ecommerce/ticket-templates', [AdminEcommerceController::class, 'storeTicketTemplate'])->name('admin.ecommerce.ticket-templates.store');
+    Route::patch('/ecommerce/ticket-templates/{ticketTemplate}', [AdminEcommerceController::class, 'updateTicketTemplate'])->name('admin.ecommerce.ticket-templates.update');
     Route::get('/agenda', [\App\Http\Controllers\Admin\AgendaController::class, 'index'])->name('admin.agenda.index');
     Route::post('/agenda/locations', [\App\Http\Controllers\Admin\AgendaController::class, 'storeLocation'])->name('admin.agenda.locations.store');
     Route::patch('/agenda/locations/{location}', [\App\Http\Controllers\Admin\AgendaController::class, 'updateLocation'])->name('admin.agenda.locations.update');
@@ -122,6 +125,7 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     Route::delete('/products/{product}/variants/{variant}', [AdminProductsController::class, 'destroyVariant'])->name('admin.products.variants.destroy');
     Route::get('/events', [AdminEventsController::class, 'index'])->name('admin.events.index');
     Route::post('/events/{event}/subevents', [AdminEventsController::class, 'storeSubevent'])->name('admin.events.subevents.store');
+    Route::post('/events/{event}/ticket-types/attach-template', [AdminEventsController::class, 'attachTicketTemplate'])->name('admin.events.ticket-types.attach-template');
     Route::delete('/events/{event}/days/{day}', [AdminEventsController::class, 'destroyDay'])->name('admin.events.days.destroy');
     Route::patch('/events/{event}/days/{day}', [AdminEventsController::class, 'updateDay'])->name('admin.events.days.update');
     Route::patch('/events/{event}/days/{day}/move', [AdminEventsController::class, 'moveDay'])->name('admin.events.days.move');
@@ -130,6 +134,7 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
         Route::get('/events/create', [AdminEventsController::class, 'create'])->name('admin.events.create');
         Route::post('/events', [AdminEventsController::class, 'store'])->name('admin.events.store');
         Route::delete('/events/{event}', [AdminEventsController::class, 'destroy'])->name('admin.events.destroy');
+        Route::delete('/ecommerce/ticket-templates/{ticketTemplate}', [AdminEcommerceController::class, 'destroyTicketTemplate'])->name('admin.ecommerce.ticket-templates.destroy');
         Route::delete('/agenda/locations/{location}', [\App\Http\Controllers\Admin\AgendaController::class, 'destroyLocation'])->name('admin.agenda.locations.destroy');
         Route::delete('/agenda/templates/{template}', [\App\Http\Controllers\Admin\AgendaController::class, 'destroyTemplate'])->name('admin.agenda.templates.destroy');
         Route::post('/events/{event}/ticket-types', [AdminEventsController::class, 'upsertTicketType'])->name('admin.events.ticket-types.upsert');

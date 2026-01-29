@@ -6,7 +6,7 @@ import { FiChevronDown, FiEdit2, FiPlus, FiTrash2 } from 'react-icons/fi';
 import { formatDMYFromYMD, normalizeTimeHM } from '@/utils/date';
 import { createPortal } from 'react-dom';
 
-export default function Edit({ event, parents, defaults, can, agenda }) {
+export default function Edit({ event, parents, defaults, can, agenda, ticketTemplates = [] }) {
     const isCreate = !event;
     const [confirmDialog, setConfirmDialog] = useState(null);
     useLockBodyScroll(!!confirmDialog);
@@ -27,6 +27,17 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
     const currentEventDayYmd = event?.event_date_ymd || (event?.start_at ? String(event.start_at).slice(0, 10) : '') || '';
     const agendaLocations = agenda?.locations ?? [];
     const agendaTemplates = agenda?.templates ?? [];
+    const ticketTemplateOptions = useMemo(() => {
+        const options = (ticketTemplates ?? []).map((t) => ({
+            value: t.id,
+            label: `${t.name || t.code}${t.is_active ? '' : ' (inactivo)'}`,
+        }));
+        return [{ value: '', label: '—' }, ...options];
+    }, [ticketTemplates]);
+
+    const eventTicketAttachForm = useForm({
+        ticket_template_id: '',
+    });
 
     const agendaLocationsById = useMemo(() => {
         const out = new Map();
@@ -138,12 +149,7 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
         flyer: null,
         is_active: true,
         tickets_enabled: false,
-        ticket_code: 'vip',
-        ticket_price: '',
-        ticket_stock: 0,
-        ticket_description: '',
-        ticket_legal_terms: '',
-        ticket_image: null,
+        ticket_template_id: '',
     });
 
     const ticketTypeForm = useForm({
@@ -235,10 +241,7 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
             }
             return;
         }
-        if (!event?.start_at) return;
-        const d = new Date(event.start_at);
-        const key = d.toISOString().slice(0, 10);
-        setOpenProgramDay(key);
+        setOpenProgramDay(null);
         setOpenProgramItem(null);
     }, [event?.id, event?.start_at, (event?.subevents ?? []).map((s) => s.id).join(',')]);
 
@@ -346,12 +349,7 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
             is_active: true,
             flyer: null,
             tickets_enabled: false,
-            ticket_code: 'vip',
-            ticket_price: '',
-            ticket_stock: 0,
-            ticket_description: '',
-            ticket_legal_terms: '',
-            ticket_image: null,
+            ticket_template_id: '',
         });
         subeventForm.clearErrors();
         setOpenProgramDay(dayDate);
@@ -381,12 +379,7 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
             };
 
             if (ticketsEnabled) {
-                payload.ticket_code = data.ticket_code;
-                payload.ticket_price = data.ticket_price;
-                payload.ticket_stock = data.ticket_stock;
-                payload.ticket_description = data.ticket_description || null;
-                payload.ticket_legal_terms = data.ticket_legal_terms || null;
-                payload.ticket_image = data.ticket_image ?? null;
+                payload.ticket_template_id = data.ticket_template_id || null;
             }
 
             return payload;
@@ -537,12 +530,12 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
 
     const [subeventEdits, setSubeventEdits] = useState({});
     const [subeventTicketsEnabled, setSubeventTicketsEnabled] = useState({});
-    const [ticketDrafts, setTicketDrafts] = useState({});
+    const [subeventTicketTemplateId, setSubeventTicketTemplateId] = useState({});
 
     useEffect(() => {
         const nextEdits = {};
         const nextTickets = {};
-        const nextTicketDrafts = {};
+        const nextTicketTemplateId = {};
         for (const s of event?.subevents ?? []) {
             const startIso = s.start_at;
             const endIso = s.end_at;
@@ -562,11 +555,11 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
                 is_active: s.is_active ?? true,
             };
             nextTickets[s.id] = (s.ticket_types?.length ?? 0) > 0;
-            nextTicketDrafts[s.id] = { code: 'vip', price: '', stock: 0, description: '', legal_terms: '', image: null };
+            nextTicketTemplateId[s.id] = '';
         }
         setSubeventEdits(nextEdits);
         setSubeventTicketsEnabled(nextTickets);
-        setTicketDrafts(nextTicketDrafts);
+        setSubeventTicketTemplateId(nextTicketTemplateId);
     }, [event?.id, event?.subevents]);
 
     const subeventsByDay = useMemo(() => {
@@ -1249,38 +1242,40 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
 
                                     {can?.delete && sponsorAddOpen && (
                                         <div className="p-5 bg-black/30 rounded-2xl border border-white/10">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                <Field
-                                                    label="Nombre"
-                                                    value={sponsorForm.data.name}
-                                                    onChange={(e) => sponsorForm.setData('name', e.target.value)}
-                                                    error={sponsorForm.errors.name}
-                                                    placeholder="Sponsor"
-                                                />
-                                                <Field
-                                                    label="URL web (opcional)"
-                                                    value={sponsorForm.data.website_url}
-                                                    onChange={(e) => sponsorForm.setData('website_url', e.target.value)}
-                                                    error={sponsorForm.errors.website_url}
-                                                    placeholder="https://..."
-                                                />
-                                            </div>
-                                            <div className="mt-4">
-                                                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Logo</label>
-                                                <input
-                                                    ref={sponsorInputRef}
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={(e) => sponsorForm.setData('logo', e.target.files?.[0] ?? null)}
-                                                />
-                                                <TicketImageBox
-                                                    previewUrl={sponsorPreview}
-                                                    onPick={() => sponsorInputRef.current?.click()}
-                                                    onDropFile={(f) => sponsorForm.setData('logo', f)}
-                                                    onRemove={() => sponsorForm.setData('logo', null)}
-                                                />
-                                                {sponsorForm.errors.logo && <div className="text-xs text-red-400 mt-2">{sponsorForm.errors.logo}</div>}
+                                            <div className="flex flex-col md:flex-row gap-6">
+                                                <div className="shrink-0">
+                                                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Logo</label>
+                                                    <input
+                                                        ref={sponsorInputRef}
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="hidden"
+                                                        onChange={(e) => sponsorForm.setData('logo', e.target.files?.[0] ?? null)}
+                                                    />
+                                                    <TicketImageBox
+                                                        previewUrl={sponsorPreview}
+                                                        onPick={() => sponsorInputRef.current?.click()}
+                                                        onDropFile={(f) => sponsorForm.setData('logo', f)}
+                                                        onRemove={() => sponsorForm.setData('logo', null)}
+                                                    />
+                                                    {sponsorForm.errors.logo && <div className="text-xs text-red-400 mt-2">{sponsorForm.errors.logo}</div>}
+                                                </div>
+                                                <div className="flex-1 space-y-4">
+                                                    <Field
+                                                        label="Nombre"
+                                                        value={sponsorForm.data.name}
+                                                        onChange={(e) => sponsorForm.setData('name', e.target.value)}
+                                                        error={sponsorForm.errors.name}
+                                                        placeholder="Sponsor"
+                                                    />
+                                                    <Field
+                                                        label="URL web (opcional)"
+                                                        value={sponsorForm.data.website_url}
+                                                        onChange={(e) => sponsorForm.setData('website_url', e.target.value)}
+                                                        error={sponsorForm.errors.website_url}
+                                                        placeholder="https://..."
+                                                    />
+                                                </div>
                                             </div>
                                             <div className="mt-5 flex items-center justify-end gap-3">
                                                 <button type="button" className="btn-secondary px-6 py-3 text-sm" onClick={() => setSponsorAddOpen(false)}>
@@ -1694,77 +1689,27 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
 
                                                                             {subeventForm.data.tickets_enabled && (
                                                                                 <div className="p-4 rounded-2xl border border-white/10 bg-black/30">
-                                                                                    <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-4">Crear ticket</div>
-                                                                                    <div className="flex flex-col gap-4">
-                                                                                        <div className="flex flex-col md:flex-row md:items-center gap-4">
-                                                                                            <div className="shrink-0">
-                                                                                                <input
-                                                                                                    id={`new-subevent-ticket-image-${day}`}
-                                                                                                    type="file"
-                                                                                                    accept="image/*"
-                                                                                                    className="hidden"
-                                                                                                    onChange={(e) => subeventForm.setData('ticket_image', e.target.files?.[0] ?? null)}
-                                                                                                />
-                                                                                                <TicketImageBox
-                                                                                                    previewUrl={subeventForm.data.ticket_image instanceof File ? URL.createObjectURL(subeventForm.data.ticket_image) : null}
-                                                                                                    onPick={() => document.getElementById(`new-subevent-ticket-image-${day}`)?.click()}
-                                                                                                    onRemove={() => subeventForm.setData('ticket_image', null)}
-                                                                                                    onDropFile={(f) => subeventForm.setData('ticket_image', f)}
-                                                                                                    size="sm"
-                                                                                                />
-                                                                                            </div>
-                                                                                            <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1 min-w-0">
-                                                                                                <div className="w-full md:max-w-[22rem]">
-                                                                                                    <CustomSelect
-                                                                                                        label="Tipo"
-                                                                                                        value={subeventForm.data.ticket_code}
-                                                                                                        options={[
-                                                                                                            { value: 'vip', label: 'VIP' },
-                                                                                                            { value: 'standard', label: 'Standard' },
-                                                                                                        ]}
-                                                                                                        onChange={(val) => subeventForm.setData('ticket_code', val)}
-                                                                                                        error={subeventForm.errors.ticket_code}
-                                                                                                    />
-                                                                                                </div>
-                                                                                                <div className="w-full md:w-56">
-                                                                                                    <Field
-                                                                                                        label="Precio (€)"
-                                                                                                        value={subeventForm.data.ticket_price}
-                                                                                                        onChange={(e) => subeventForm.setData('ticket_price', e.target.value)}
-                                                                                                        error={subeventForm.errors.ticket_price}
-                                                                                                        placeholder="0.00"
-                                                                                                    />
-                                                                                                </div>
-                                                                                                <div className="w-full md:w-44">
-                                                                                                    <Field
-                                                                                                        label="Stock"
-                                                                                                        value={subeventForm.data.ticket_stock}
-                                                                                                        onChange={(e) => subeventForm.setData('ticket_stock', e.target.value)}
-                                                                                                        error={subeventForm.errors.ticket_stock}
-                                                                                                        placeholder="0"
-                                                                                                    />
-                                                                                                </div>
-                                                                                            </div>
-                                                                                            <div className="w-full md:w-auto md:ml-auto">
-                                                                                                <button type="button" className="btn-primary w-full px-6 py-3 text-sm" disabled={subeventForm.processing} onClick={submitSubevent}>
-                                                                                                    Crear subevento + ticket
-                                                                                                </button>
-                                                                                            </div>
+                                                                                    <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-4">Seleccionar ticket</div>
+                                                                                    <div className="flex flex-col md:flex-row md:items-center gap-4">
+                                                                                        <div className="w-full md:max-w-[22rem]">
+                                                                                            <CustomSelect
+                                                                                                label="Ticket"
+                                                                                                value={subeventForm.data.ticket_template_id}
+                                                                                                options={ticketTemplateOptions}
+                                                                                                onChange={(val) => subeventForm.setData('ticket_template_id', val)}
+                                                                                                error={subeventForm.errors.ticket_template_id}
+                                                                                            />
                                                                                         </div>
-                                                                                        <CollapsibleTextArea
-                                                                                            label="Descripción del ticket"
-                                                                                            value={subeventForm.data.ticket_description}
-                                                                                            onChange={(e) => subeventForm.setData('ticket_description', e.target.value)}
-                                                                                            error={subeventForm.errors.ticket_description}
-                                                                                            defaultOpen={true}
-                                                                                        />
-                                                                                        <CollapsibleTextArea
-                                                                                            label="Condiciones legales"
-                                                                                            value={subeventForm.data.ticket_legal_terms}
-                                                                                            onChange={(e) => subeventForm.setData('ticket_legal_terms', e.target.value)}
-                                                                                            error={subeventForm.errors.ticket_legal_terms}
-                                                                                            defaultOpen={true}
-                                                                                        />
+                                                                                        <div className="w-full md:w-auto md:ml-auto">
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                className="btn-primary w-full px-6 py-3 text-sm"
+                                                                                                disabled={subeventForm.processing || !subeventForm.data.ticket_template_id}
+                                                                                                onClick={submitSubevent}
+                                                                                            >
+                                                                                                Crear subevento
+                                                                                            </button>
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
                                                                             )}
@@ -1785,8 +1730,7 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
                                                                         const isItemOpen = openProgramItem === `se:${s.id}`;
                                                                         const ed = subeventEdits?.[s.id];
                                                                         const ticketsEnabled = !!subeventTicketsEnabled?.[s.id];
-                                                                        const ticketDraft = ticketDrafts?.[s.id] ?? { code: 'vip', price: '', stock: 0, description: '', legal_terms: '', image: null };
-                                                                        const ticketImagePreview = ticketDraft?.image instanceof File ? URL.createObjectURL(ticketDraft.image) : null;
+                                                                        const selectedTemplateId = subeventTicketTemplateId?.[s.id] ?? '';
 
                                                                         return (
                                                                             <div key={s.id} id={`subevent-${s.id}`} className="rounded-3xl border border-white/10 bg-white/5 overflow-hidden">
@@ -1951,256 +1895,58 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
                                                                                         <div className="p-4 rounded-2xl border border-white/10 bg-black/30">
                                                                                             <div className="text-xs font-black uppercase tracking-widest text-gray-500 mb-4">Tickets del subevento</div>
                                                                                             {(s.ticket_types?.length ?? 0) > 0 ? (
-                                                                                                <div className="space-y-3 mb-5">
-                                                                                                    {s.ticket_types.map((t) => {
-                                                                                                        const ed = ticketTypeEdits?.[t.id] ?? {};
-                                                                                                        const draftImage = ticketTypeImages?.[t.id] ?? null;
-                                                                                                        const preview = draftImage instanceof File ? URL.createObjectURL(draftImage) : t.image_url;
-                                                                                                        const stockValue = Number(ed.stock ?? t.stock ?? 0);
-                                                                                                        const isExpired = (() => {
-                                                                                                            try {
-                                                                                                                if (!s.end_at) return false;
-                                                                                                                return new Date(s.end_at).getTime() < Date.now();
-                                                                                                            } catch {
-                                                                                                                return false;
-                                                                                                            }
-                                                                                                        })();
-                                                                                                        const canBeActive = !isExpired && stockValue > 0;
-                                                                                                        const effectiveActive = canBeActive ? !!(ed.is_active ?? t.is_active) : false;
-
-                                                                                                        return (
-                                                                                                            <div key={t.id} className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-4">
-                                                                                                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                                                                                                    <div className="min-w-0 flex items-center gap-4">
-                                                                                                                        <p className="font-black text-sm uppercase tracking-widest">{t.code}</p>
-                                                                                                                        <div className="flex items-center gap-2">
-                                                                                                                            <span className="text-xs text-gray-500">Activo</span>
-                                                                                                                            <InlineSwitch
-                                                                                                                                checked={effectiveActive}
-                                                                                                                                disabled={!canBeActive}
-                                                                                                                                onChange={(checked) =>
-                                                                                                                                    setTicketTypeEdits((prev) => ({
-                                                                                                                                        ...prev,
-                                                                                                                                        [t.id]: { ...(prev?.[t.id] ?? {}), is_active: checked },
-                                                                                                                                    }))
-                                                                                                                                }
-                                                                                                                            />
-                                                                                                                        </div>
-                                                                                                                        {isExpired ? <span className="text-xs font-bold text-red-400">FINALIZADO</span> : null}
-                                                                                                                        {!isExpired && stockValue <= 0 ? <span className="text-xs font-bold text-red-400">AGOTADO</span> : null}
-                                                                                                                    </div>
-                                                                                                                </div>
-
-                                                                                                                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                                                                                                                    <div className="flex items-center gap-4">
-                                                                                                                        <input
-                                                                                                                            type="file"
-                                                                                                                            accept="image/*"
-                                                                                                                            className="hidden"
-                                                                                                                            ref={(el) => {
-                                                                                                                                if (!el) return;
-                                                                                                                                ticketTypeInputRefs.current[t.id] = el;
-                                                                                                                            }}
-                                                                                                                            onChange={(e) => setTicketTypeImages((prev) => ({ ...prev, [t.id]: e.target.files?.[0] ?? null }))}
-                                                                                                                        />
-                                                                                                                        <TicketImageBox
-                                                                                                                            previewUrl={preview}
-                                                                                                                            onPick={() => ticketTypeInputRefs.current?.[t.id]?.click()}
-                                                                                                                            onDropFile={(f) => setTicketTypeImages((prev) => ({ ...prev, [t.id]: f }))}
-                                                                                                                            onRemove={() => {
-                                                                                                                                if (draftImage instanceof File) {
-                                                                                                                                    setTicketTypeImages((prev) => ({ ...prev, [t.id]: null }));
-                                                                                                                                    return;
-                                                                                                                                }
-                                                                                                                                if (t.image_url) {
-                                                                                                                                    deleteTicketTypeImageFor(s.id, t.id);
-                                                                                                                                }
-                                                                                                                            }}
-                                                                                                                        />
-                                                                                                                    </div>
-
-                                                                                                                    <Field
-                                                                                                                        label="Precio (€)"
-                                                                                                                        value={ed.price ?? ''}
-                                                                                                                        onChange={(e) =>
-                                                                                                                            setTicketTypeEdits((prev) => ({
-                                                                                                                                ...prev,
-                                                                                                                                [t.id]: { ...(prev?.[t.id] ?? {}), price: e.target.value },
-                                                                                                                            }))
-                                                                                                                        }
-                                                                                                                        error={null}
-                                                                                                                        placeholder="0.00"
-                                                                                                                    />
-                                                                                                                    <Field
-                                                                                                                        label="Stock"
-                                                                                                                        value={ed.stock ?? 0}
-                                                                                                                        onChange={(e) =>
-                                                                                                                            setTicketTypeEdits((prev) => ({
-                                                                                                                                ...prev,
-                                                                                                                                [t.id]: { ...(prev?.[t.id] ?? {}), stock: e.target.value },
-                                                                                                                            }))
-                                                                                                                        }
-                                                                                                                        error={null}
-                                                                                                                        placeholder="0"
-                                                                                                                    />
-                                                                                                                    <div className="flex items-start justify-end gap-3 pt-7">
-                                                                                                                        <button type="button" className="btn-secondary px-5 py-3 text-sm" onClick={() => saveTicketTypeFor(s.id, t)}>
-                                                                                                                            Guardar
-                                                                                                                        </button>
-                                                                                                                        <button
-                                                                                                                            type="button"
-                                                                                                                            className="px-5 py-3 text-sm rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-colors"
-                                                                                                                            onClick={() => deleteTicketTypeFor(s.id, t.id)}
-                                                                                                                        >
-                                                                                                                            Eliminar
-                                                                                                                        </button>
-                                                                                                                    </div>
-                                                                                                                    <div className="lg:col-span-4">
-                                                                                                                        <CollapsibleTextArea
-                                                                                                                            label="Descripción del ticket"
-                                                                                                                            value={ed.description ?? ''}
-                                                                                                                            onChange={(e) =>
-                                                                                                                                setTicketTypeEdits((prev) => ({
-                                                                                                                                    ...prev,
-                                                                                                                                    [t.id]: { ...(prev?.[t.id] ?? {}), description: e.target.value },
-                                                                                                                                }))
-                                                                                                                            }
-                                                                                                                            error={null}
-                                                                                                                            defaultOpen={false}
-                                                                                                                        />
-                                                                                                                    </div>
-                                                                                                                    <div className="lg:col-span-4">
-                                                                                                                        <CollapsibleTextArea
-                                                                                                                            label="Condiciones legales"
-                                                                                                                            value={ed.legal_terms ?? ''}
-                                                                                                                            onChange={(e) =>
-                                                                                                                                setTicketTypeEdits((prev) => ({
-                                                                                                                                    ...prev,
-                                                                                                                                    [t.id]: { ...(prev?.[t.id] ?? {}), legal_terms: e.target.value },
-                                                                                                                                }))
-                                                                                                                            }
-                                                                                                                            error={null}
-                                                                                                                            defaultOpen={false}
-                                                                                                                        />
-                                                                                                                    </div>
+                                                                                                <div className="space-y-2 mb-5">
+                                                                                                    {s.ticket_types.map((t) => (
+                                                                                                        <div key={t.id} className="flex items-center justify-between gap-4 p-3 rounded-xl border border-white/10 bg-white/5">
+                                                                                                            <div className="min-w-0">
+                                                                                                                <div className="font-black text-sm uppercase tracking-widest truncate">{t.name || t.code}</div>
+                                                                                                                <div className="text-xs text-gray-500 truncate">
+                                                                                                                    {t.price}€ • stock {t.stock} {t.is_active ? '' : '• inactivo'}
                                                                                                                 </div>
                                                                                                             </div>
-                                                                                                        );
-                                                                                                    })}
+                                                                                                            <button
+                                                                                                                type="button"
+                                                                                                                className="px-4 py-2 text-xs rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-colors"
+                                                                                                                onClick={() => deleteTicketTypeFor(s.id, t.id)}
+                                                                                                            >
+                                                                                                                Eliminar
+                                                                                                            </button>
+                                                                                                        </div>
+                                                                                                    ))}
                                                                                                 </div>
                                                                                             ) : (
-                                                                                                <div className="text-sm text-gray-400 mb-5">Todavía no hay tickets creados.</div>
+                                                                                                <div className="text-sm text-gray-400 mb-5">Todavía no hay tickets asociados.</div>
                                                                                             )}
 
-                                                                                            <div className="flex flex-col gap-4">
-                                                                                                <div className="flex flex-col md:flex-row md:items-center gap-4">
-                                                                                                    <div className="shrink-0">
-                                                                                                        <input
-                                                                                                            id={`ticket-image-${s.id}`}
-                                                                                                            type="file"
-                                                                                                            accept="image/*"
-                                                                                                            className="hidden"
-                                                                                                            onChange={(e) =>
-                                                                                                                setTicketDrafts((prev) => ({
-                                                                                                                    ...prev,
-                                                                                                                    [s.id]: { ...(prev?.[s.id] ?? {}), image: e.target.files?.[0] ?? null },
-                                                                                                                }))
-                                                                                                            }
-                                                                                                        />
-                                                                                                        <TicketImageBox
-                                                                                                            previewUrl={ticketImagePreview}
-                                                                                                            onPick={() => document.getElementById(`ticket-image-${s.id}`)?.click()}
-                                                                                                            onDropFile={(f) =>
-                                                                                                                setTicketDrafts((prev) => ({
-                                                                                                                    ...prev,
-                                                                                                                    [s.id]: { ...(prev?.[s.id] ?? {}), image: f },
-                                                                                                                }))
-                                                                                                            }
-                                                                                                            onRemove={() =>
-                                                                                                                setTicketDrafts((prev) => ({
-                                                                                                                    ...prev,
-                                                                                                                    [s.id]: { ...(prev?.[s.id] ?? {}), image: null },
-                                                                                                                }))
-                                                                                                            }
-                                                                                                            size="sm"
-                                                                                                        />
-                                                                                                    </div>
-                                                                                                    <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1 min-w-0">
-                                                                                                        <div className="w-full md:max-w-[22rem]">
-                                                                                                            <CustomSelect
-                                                                                                                label="Tipo"
-                                                                                                                value={ticketDraft.code}
-                                                                                                                options={[
-                                                                                                                    { value: 'vip', label: 'VIP' },
-                                                                                                                    { value: 'standard', label: 'Standard' },
-                                                                                                                ]}
-                                                                                                                onChange={(val) => setTicketDrafts((prev) => ({ ...prev, [s.id]: { ...(prev?.[s.id] ?? {}), code: val } }))}
-                                                                                                            />
-                                                                                                        </div>
-                                                                                                        <div className="w-full md:w-56">
-                                                                                                            <Field
-                                                                                                                label="Precio (€)"
-                                                                                                                value={ticketDraft.price}
-                                                                                                                onChange={(e) => setTicketDrafts((prev) => ({ ...prev, [s.id]: { ...(prev?.[s.id] ?? {}), price: e.target.value } }))}
-                                                                                                                error={null}
-                                                                                                                placeholder="0.00"
-                                                                                                            />
-                                                                                                        </div>
-                                                                                                        <div className="w-full md:w-44">
-                                                                                                            <Field
-                                                                                                                label="Stock"
-                                                                                                                value={ticketDraft.stock}
-                                                                                                                onChange={(e) => setTicketDrafts((prev) => ({ ...prev, [s.id]: { ...(prev?.[s.id] ?? {}), stock: e.target.value } }))}
-                                                                                                                error={null}
-                                                                                                                placeholder="0"
-                                                                                                            />
-                                                                                                        </div>
-                                                                                                    </div>
-                                                                                                    <div className="w-full md:w-auto md:ml-auto">
-                                                                                                        <button
-                                                                                                            type="button"
-                                                                                                            className="btn-primary px-6 py-3 text-sm w-full"
-                                                                                                            onClick={() => {
-                                                                                                                const payload = {
-                                                                                                                    code: ticketDraft.code,
-                                                                                                                    price: ticketDraft.price,
-                                                                                                                    stock: ticketDraft.stock,
-                                                                                                                    description: ticketDraft.description ?? null,
-                                                                                                                    legal_terms: ticketDraft.legal_terms ?? null,
-                                                                                                                    image: ticketDraft.image ?? null,
-                                                                                                                    is_active: 1,
-                                                                                                                };
-                                                                                                                router.post(route('admin.events.ticket-types.upsert', s.id), payload, { preserveScroll: true, forceFormData: true });
-                                                                                                            }}
-                                                                                                        >
-                                                                                                            Crear ticket
-                                                                                                        </button>
-                                                                                                    </div>
+                                                                                            <div className="flex flex-col md:flex-row md:items-center gap-4">
+                                                                                                <div className="w-full md:max-w-[22rem]">
+                                                                                                    <CustomSelect
+                                                                                                        label="Añadir ticket"
+                                                                                                        value={selectedTemplateId}
+                                                                                                        options={ticketTemplateOptions}
+                                                                                                        onChange={(val) => setSubeventTicketTemplateId((prev) => ({ ...prev, [s.id]: val }))}
+                                                                                                    />
                                                                                                 </div>
-                                                                                                <CollapsibleTextArea
-                                                                                                    label="Descripción del ticket"
-                                                                                                    value={ticketDraft.description ?? ''}
-                                                                                                    onChange={(e) =>
-                                                                                                        setTicketDrafts((prev) => ({
-                                                                                                            ...prev,
-                                                                                                            [s.id]: { ...(prev?.[s.id] ?? {}), description: e.target.value },
-                                                                                                        }))
-                                                                                                    }
-                                                                                                    error={null}
-                                                                                                    defaultOpen={true}
-                                                                                                />
-                                                                                                <CollapsibleTextArea
-                                                                                                    label="Condiciones legales"
-                                                                                                    value={ticketDraft.legal_terms ?? ''}
-                                                                                                    onChange={(e) =>
-                                                                                                        setTicketDrafts((prev) => ({
-                                                                                                            ...prev,
-                                                                                                            [s.id]: { ...(prev?.[s.id] ?? {}), legal_terms: e.target.value },
-                                                                                                        }))
-                                                                                                    }
-                                                                                                    error={null}
-                                                                                                    defaultOpen={true}
-                                                                                                />
+                                                                                                <div className="w-full md:w-auto md:ml-auto">
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        className="btn-primary px-6 py-3 text-sm w-full"
+                                                                                                        disabled={!selectedTemplateId}
+                                                                                                        onClick={() =>
+                                                                                                            router.post(
+                                                                                                                route('admin.events.ticket-types.attach-template', s.id),
+                                                                                                                { ticket_template_id: selectedTemplateId },
+                                                                                                                {
+                                                                                                                    preserveScroll: true,
+                                                                                                                    preserveState: true,
+                                                                                                                    onSuccess: () => setSubeventTicketTemplateId((prev) => ({ ...prev, [s.id]: '' })),
+                                                                                                                }
+                                                                                                            )
+                                                                                                        }
+                                                                                                    >
+                                                                                                        Añadir
+                                                                                                    </button>
+                                                                                                </div>
                                                                                             </div>
                                                                                         </div>
                                                                                     )}
@@ -2232,8 +1978,11 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
                                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                                         <div>
                                             <h3 className="text-xl font-bold">Tickets</h3>
-                                            <p className="text-sm text-gray-400">Crea y gestiona múltiples tipos de ticket para este evento o subevento.</p>
+                                            <p className="text-sm text-gray-400">Crea tickets en Ecommerce y selecciónalos aquí para este evento.</p>
                                         </div>
+                                        <a href={route('admin.ecommerce.index', { tab: 'tickets' })} className="btn-secondary px-6 py-3 text-sm">
+                                            Ir a Ecommerce
+                                        </a>
                                     </div>
 
                                     <div className="mb-6">
@@ -2246,227 +1995,62 @@ export default function Edit({ event, parents, defaults, can, agenda }) {
                                         />
                                     </div>
 
-                                    {ticketTypes.length ? (
-                                        <div className="space-y-3 mb-6">
-                                            {ticketTypes.map((t) => {
-                                                const ed = ticketTypeEdits?.[t.id] ?? {};
-                                                const draftImage = ticketTypeImages?.[t.id] ?? null;
-                                                const preview = draftImage instanceof File ? URL.createObjectURL(draftImage) : t.image_url;
-                                                const stockValue = Number(ed.stock ?? t.stock ?? 0);
-                                                const isExpired = (() => {
-                                                    try {
-                                                        if (!event?.end_at) return false;
-                                                        return new Date(event.end_at).getTime() < Date.now();
-                                                    } catch {
-                                                        return false;
-                                                    }
-                                                })();
-                                                const canBeActive = !isExpired && stockValue > 0;
-                                                const effectiveActive = canBeActive ? !!(ed.is_active ?? t.is_active) : false;
-
-                                                return (
-                                                    <div key={t.id} className="p-4 bg-white/5 rounded-2xl border border-white/10 space-y-4">
-                                                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                                            <div className="min-w-0 flex items-center gap-4">
-                                                                <p className="font-black text-sm uppercase tracking-widest">{t.code}</p>
-                                                                <div className="flex items-center gap-2">
-                                                                    <span className="text-xs text-gray-500">Activo</span>
-                                                                    <InlineSwitch
-                                                                        checked={effectiveActive}
-                                                                        disabled={!canBeActive}
-                                                                        onChange={(checked) =>
-                                                                            setTicketTypeEdits((prev) => ({
-                                                                                ...prev,
-                                                                                [t.id]: { ...(prev?.[t.id] ?? {}), is_active: checked },
-                                                                            }))
-                                                                        }
-                                                                    />
-                                                                </div>
-                                                                {isExpired ? <span className="text-xs font-bold text-red-400">FINALIZADO</span> : null}
-                                                                {!isExpired && stockValue <= 0 ? <span className="text-xs font-bold text-red-400">AGOTADO</span> : null}
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-                                                            <div className="flex items-center gap-4">
-                                                                <input
-                                                                    type="file"
-                                                                    accept="image/*"
-                                                                    className="hidden"
-                                                                    ref={(el) => {
-                                                                        if (!el) return;
-                                                                        ticketTypeInputRefs.current[t.id] = el;
-                                                                    }}
-                                                                    onChange={(e) => setTicketTypeImages((prev) => ({ ...prev, [t.id]: e.target.files?.[0] ?? null }))}
-                                                                />
-                                                                <TicketImageBox
-                                                                    previewUrl={preview}
-                                                                    onPick={() => ticketTypeInputRefs.current?.[t.id]?.click()}
-                                                                    onDropFile={(f) => setTicketTypeImages((prev) => ({ ...prev, [t.id]: f }))}
-                                                                    onRemove={() => {
-                                                                        if (draftImage instanceof File) {
-                                                                            setTicketTypeImages((prev) => ({ ...prev, [t.id]: null }));
-                                                                            return;
-                                                                        }
-                                                                        if (t.image_url) {
-                                                                            deleteTicketTypeImage(t.id);
-                                                                        }
-                                                                    }}
-                                                                />
-                                                            </div>
-
-                                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                                <Field
-                                                                    label="Precio (€)"
-                                                                    value={ed.price ?? ''}
-                                                                    onChange={(e) => setTicketTypeEdits((prev) => ({ ...prev, [t.id]: { ...(prev?.[t.id] ?? {}), price: e.target.value } }))}
-                                                                    error={null}
-                                                                    placeholder="0.00"
-                                                                />
-                                                                <Field
-                                                                    label="Stock"
-                                                                    value={ed.stock ?? 0}
-                                                                    onChange={(e) => setTicketTypeEdits((prev) => ({ ...prev, [t.id]: { ...(prev?.[t.id] ?? {}), stock: e.target.value } }))}
-                                                                    error={null}
-                                                                    placeholder="0"
-                                                                />
-                                                                <div className="flex items-start justify-end gap-3 pt-7">
-                                                                    <button type="button" className="btn-secondary px-5 py-3 text-sm" onClick={() => saveTicketType(t)}>
-                                                                        Guardar
-                                                                    </button>
-                                                                    {can?.manage_ticket_types && (
-                                                                        <button
-                                                                            type="button"
-                                                                            className="px-5 py-3 text-sm rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-colors"
-                                                                            onClick={() => deleteTicketType(t.id)}
-                                                                        >
-                                                                            Eliminar
-                                                                        </button>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="lg:col-span-4">
-                                                                <CollapsibleTextArea
-                                                                    label="Descripción del ticket"
-                                                                    value={ed.description ?? ''}
-                                                                    onChange={(e) =>
-                                                                        setTicketTypeEdits((prev) => ({
-                                                                            ...prev,
-                                                                            [t.id]: { ...(prev?.[t.id] ?? {}), description: e.target.value },
-                                                                        }))
-                                                                    }
-                                                                    error={null}
-                                                                    defaultOpen={false}
-                                                                />
-                                                            </div>
-                                                            <div className="lg:col-span-4">
-                                                                <CollapsibleTextArea
-                                                                    label="Condiciones legales"
-                                                                    value={ed.legal_terms ?? ''}
-                                                                    onChange={(e) =>
-                                                                        setTicketTypeEdits((prev) => ({
-                                                                            ...prev,
-                                                                            [t.id]: { ...(prev?.[t.id] ?? {}), legal_terms: e.target.value },
-                                                                        }))
-                                                                    }
-                                                                    error={null}
-                                                                    defaultOpen={false}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    ) : (
-                                        <p className="text-gray-400 mb-6">Todavía no hay tipos de ticket configurados.</p>
-                                    )}
-
                                     {can?.manage_ticket_types && (
-                                        <div className="flex flex-col gap-4">
+                                        <div className="p-4 rounded-2xl border border-white/10 bg-black/30 mb-6">
                                             <div className="flex flex-col md:flex-row md:items-center gap-4">
-                                                <div className="shrink-0">
-                                                    <input
-                                                        ref={ticketTypeCreateImageRef}
-                                                        type="file"
-                                                        accept="image/*"
-                                                        className="hidden"
-                                                        onChange={(e) => ticketTypeForm.setData('image', e.target.files?.[0] ?? null)}
+                                                <div className="w-full md:max-w-[22rem]">
+                                                    <CustomSelect
+                                                        label="Añadir ticket"
+                                                        value={eventTicketAttachForm.data.ticket_template_id}
+                                                        options={ticketTemplateOptions}
+                                                        onChange={(val) => eventTicketAttachForm.setData('ticket_template_id', val)}
+                                                        error={eventTicketAttachForm.errors.ticket_template_id}
                                                     />
-                                                    <TicketImageBox
-                                                        previewUrl={ticketTypeForm.data.image instanceof File ? URL.createObjectURL(ticketTypeForm.data.image) : null}
-                                                        onPick={() => ticketTypeCreateImageRef.current?.click()}
-                                                        onRemove={() => ticketTypeForm.setData('image', null)}
-                                                        onDropFile={(f) => ticketTypeForm.setData('image', f)}
-                                                        size="sm"
-                                                    />
-                                                </div>
-                                                <div className="flex flex-col md:flex-row md:items-center gap-4 flex-1 min-w-0">
-                                                    <div className="w-full md:max-w-[22rem]">
-                                                        <CustomSelect
-                                                            label="Tipo"
-                                                            value={ticketTypeForm.data.code}
-                                                            options={[
-                                                                { value: 'vip', label: 'VIP' },
-                                                                { value: 'standard', label: 'Standard' },
-                                                            ]}
-                                                            onChange={(val) => ticketTypeForm.setData('code', val)}
-                                                            error={ticketTypeForm.errors.code}
-                                                        />
-                                                    </div>
-                                                    <div className="w-full md:w-56">
-                                                        <Field
-                                                            label="Precio (€)"
-                                                            value={ticketTypeForm.data.price}
-                                                            onChange={(e) => ticketTypeForm.setData('price', e.target.value)}
-                                                            error={ticketTypeForm.errors.price}
-                                                            placeholder="0.00"
-                                                        />
-                                                    </div>
-                                                    <div className="w-full md:w-44">
-                                                        <Field
-                                                            label="Stock"
-                                                            value={ticketTypeForm.data.stock}
-                                                            onChange={(e) => ticketTypeForm.setData('stock', e.target.value)}
-                                                            error={ticketTypeForm.errors.stock}
-                                                            placeholder="0"
-                                                        />
-                                                    </div>
                                                 </div>
                                                 <div className="w-full md:w-auto md:ml-auto">
                                                     <button
                                                         type="button"
                                                         className="btn-primary w-full px-6 py-3 text-sm"
-                                                        disabled={ticketTypeForm.processing}
+                                                        disabled={eventTicketAttachForm.processing || !eventTicketAttachForm.data.ticket_template_id}
                                                         onClick={() =>
-                                                            openConfirm({
-                                                                title: 'Guardar ticket',
-                                                                message: '¿Quieres guardar este ticket?',
-                                                                confirmLabel: 'Guardar',
-                                                                confirmVariant: 'primary',
-                                                                onConfirm: submitTicketType,
+                                                            eventTicketAttachForm.post(route('admin.events.ticket-types.attach-template', event.id), {
+                                                                preserveScroll: true,
+                                                                preserveState: true,
+                                                                onSuccess: () => eventTicketAttachForm.setData('ticket_template_id', ''),
                                                             })
                                                         }
                                                     >
-                                                        Guardar ticket
+                                                        Añadir
                                                     </button>
                                                 </div>
                                             </div>
-                                            <CollapsibleTextArea
-                                                label="Descripción del ticket"
-                                                value={ticketTypeForm.data.description}
-                                                onChange={(e) => ticketTypeForm.setData('description', e.target.value)}
-                                                error={ticketTypeForm.errors.description}
-                                                defaultOpen={true}
-                                            />
-                                            <CollapsibleTextArea
-                                                label="Condiciones legales"
-                                                value={ticketTypeForm.data.legal_terms}
-                                                onChange={(e) => ticketTypeForm.setData('legal_terms', e.target.value)}
-                                                error={ticketTypeForm.errors.legal_terms}
-                                                defaultOpen={true}
-                                            />
                                         </div>
+                                    )}
+
+                                    {ticketTypes.length ? (
+                                        <div className="space-y-2">
+                                            {ticketTypes.map((t) => (
+                                                <div key={t.id} className="flex items-center justify-between gap-4 p-3 rounded-xl border border-white/10 bg-white/5">
+                                                    <div className="min-w-0">
+                                                        <div className="font-black text-sm uppercase tracking-widest truncate">{t.name || t.code}</div>
+                                                        <div className="text-xs text-gray-500 truncate">
+                                                            {t.price}€ • stock {t.stock} {t.is_active ? '' : '• inactivo'}
+                                                        </div>
+                                                    </div>
+                                                    {can?.manage_ticket_types ? (
+                                                        <button
+                                                            type="button"
+                                                            className="px-4 py-2 text-xs rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-colors"
+                                                            onClick={() => deleteTicketType(t.id)}
+                                                        >
+                                                            Eliminar
+                                                        </button>
+                                                    ) : null}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-gray-400">Todavía no hay tickets asociados.</p>
                                     )}
                                 </div>
                             </div>
@@ -2716,8 +2300,10 @@ function ConfirmDialog({ title, message, confirmLabel, confirmVariant, onCancel,
             ? 'px-6 py-3 text-sm rounded-xl font-bold bg-red-600 hover:bg-red-500 text-white transition-colors'
             : 'btn-primary px-6 py-3 text-sm';
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6" onClick={onCancel}>
+    if (typeof document === 'undefined') return null;
+
+    return createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/85 backdrop-blur-sm px-6" onClick={onCancel}>
             <div className="glass-card max-w-lg w-full p-6 border border-white/10 bg-white/10 shadow-2xl shadow-black/60" onClick={(e) => e.stopPropagation()}>
                 <h3 className="text-2xl font-black tracking-tight mb-2">{title}</h3>
                 <p className="text-gray-400 mb-6">{message}</p>
@@ -2730,7 +2316,8 @@ function ConfirmDialog({ title, message, confirmLabel, confirmVariant, onCancel,
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }
 

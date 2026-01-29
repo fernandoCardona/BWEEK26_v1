@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { FiLogOut, FiShoppingCart, FiUser, FiX } from 'react-icons/fi';
 import { FaFacebookF, FaInstagram, FaTelegramPlane, FaWhatsapp } from 'react-icons/fa';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
+import SwitchToggle from '@/Components/SwitchToggle';
 
 export default function Navigation({ onOpenLegal }) {
     const { url, props } = usePage();
@@ -620,15 +621,7 @@ export default function Navigation({ onOpenLegal }) {
                                         {loginForm.errors.password && <div className="text-xs text-red-400 mt-1">{loginForm.errors.password}</div>}
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <label className="flex items-center gap-2 text-sm text-gray-400 select-none">
-                                            <input
-                                                type="checkbox"
-                                                className="rounded border-white/20 bg-white/5"
-                                                checked={loginForm.data.remember}
-                                                onChange={(e) => loginForm.setData('remember', e.target.checked)}
-                                            />
-                                            Recordarme
-                                        </label>
+                                        <SwitchToggle checked={loginForm.data.remember} onChange={(v) => loginForm.setData('remember', v)} labelOn="Recordarme" labelOff="No recordarme" />
                                         <button
                                             type="button"
                                             className="text-sm text-gray-300 hover:text-white"

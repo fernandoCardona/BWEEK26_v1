@@ -3,6 +3,8 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 import { formatDMY, formatTimeHM } from '@/utils/date';
+import ImagePickerBox from '@/Components/ImagePickerBox';
+import SwitchToggle from '@/Components/SwitchToggle';
 
 export default function Index({ users, filters, selectedUser, selectedTickets, selectedTransactions, selectedCart, selectedStats, can }) {
     const { props } = usePage();
@@ -47,6 +49,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
         country: selectedUser?.country ?? '',
         no_newsletter: selectedUser ? !(selectedUser.newsletter_subscribed ?? true) : false,
         avatar: null,
+        remove_avatar: false,
     });
 
     const roleForm = useForm({
@@ -69,6 +72,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
             country: selectedUser?.country ?? '',
             no_newsletter: selectedUser ? !(selectedUser.newsletter_subscribed ?? true) : false,
             avatar: null,
+            remove_avatar: false,
         });
         roleForm.setData('role', selectedUser?.role ?? 'user');
         profileForm.clearErrors();
@@ -136,12 +140,22 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
         return full || selectedUser.email;
     }, [selectedId]);
 
-    const avatarPreview = useMemo(() => {
-        if (profileForm.data.avatar instanceof File) {
-            return URL.createObjectURL(profileForm.data.avatar);
+    const [avatarObjectUrl, setAvatarObjectUrl] = useState(null);
+    useEffect(() => {
+        if (!(profileForm.data.avatar instanceof File)) {
+            setAvatarObjectUrl(null);
+            return undefined;
         }
+        const url = URL.createObjectURL(profileForm.data.avatar);
+        setAvatarObjectUrl(url);
+        return () => URL.revokeObjectURL(url);
+    }, [profileForm.data.avatar]);
+
+    const avatarPreview = useMemo(() => {
+        if (profileForm.data.remove_avatar) return null;
+        if (avatarObjectUrl) return avatarObjectUrl;
         return selectedUser?.avatar_url ?? null;
-    }, [profileForm.data.avatar, selectedId, selectedUser?.avatar_url]);
+    }, [avatarObjectUrl, profileForm.data.remove_avatar, selectedId, selectedUser?.avatar_url]);
 
     const canManageSelected =
         !!selectedUser &&
@@ -279,34 +293,29 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                 <form onSubmit={submitUpdateUser} className="space-y-4">
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Imagen (opcional)</label>
-                                        <div className="flex items-center gap-6">
-                                            <div className="w-32 h-32 rounded-3xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
-                                                {avatarPreview ? (
-                                                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <span className="text-xs text-gray-500">Sin</span>
-                                                )}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <input
-                                                    ref={avatarInputRef}
-                                                    type="file"
-                                                    accept="image/*"
-                                                    className="hidden"
-                                                    onChange={(e) => profileForm.setData('avatar', e.target.files?.[0] ?? null)}
-                                                />
-                                                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                                                    <button
-                                                        type="button"
-                                                        className="btn-secondary px-6 py-3 text-sm"
-                                                        onClick={() => avatarInputRef.current?.click()}
-                                                    >
-                                                        Seleccionar archivo
-                                                    </button>
-                                                    <span className="text-sm text-gray-300 truncate">
-                                                        {profileForm.data.avatar?.name ? profileForm.data.avatar.name : 'Ningún archivo seleccionado'}
-                                                    </span>
-                                                </div>
+                                        <input
+                                            ref={avatarInputRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                profileForm.setData('remove_avatar', false);
+                                                profileForm.setData('avatar', e.target.files?.[0] ?? null);
+                                            }}
+                                        />
+                                        <div className="flex items-start gap-6">
+                                            <ImagePickerBox
+                                                previewUrl={avatarPreview}
+                                                onPick={() => avatarInputRef.current?.click()}
+                                                onRemove={() => {
+                                                    profileForm.setData('avatar', null);
+                                                    profileForm.setData('remove_avatar', true);
+                                                }}
+                                                size="md"
+                                                fit="cover"
+                                            />
+                                            <div className="flex-1 text-sm text-gray-400 pt-1">
+                                                Haz click para subir. Pasa el ratón sobre la imagen para eliminarla.
                                             </div>
                                         </div>
                                         {profileForm.errors.avatar && <div className="text-xs text-red-400 mt-1">{profileForm.errors.avatar}</div>}
@@ -342,15 +351,7 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                         <Field label="Código postal" value={profileForm.data.postal_code} onChange={(e) => profileForm.setData('postal_code', e.target.value)} error={profileForm.errors.postal_code} />
                                         <Field label="País (ISO)" value={profileForm.data.country} onChange={(e) => profileForm.setData('country', e.target.value.toUpperCase())} error={profileForm.errors.country} />
                                     </div>
-                                    <label className="flex items-center gap-3 text-sm text-gray-300 select-none">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded border-white/20 bg-white/5"
-                                            checked={profileForm.data.no_newsletter}
-                                            onChange={(e) => profileForm.setData('no_newsletter', e.target.checked)}
-                                        />
-                                        No quiero recibir newsletter
-                                    </label>
+                                    <SwitchToggle checked={profileForm.data.no_newsletter} onChange={(v) => profileForm.setData('no_newsletter', v)} labelOn="No quiero recibir newsletter" labelOff="Sí quiero recibir newsletter" />
                                     <button className="btn-primary px-6 py-3 text-sm" disabled={profileForm.processing}>
                                         Guardar cambios
                                     </button>

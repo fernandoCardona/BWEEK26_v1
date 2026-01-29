@@ -10,10 +10,25 @@ use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class ProductsController extends Controller
 {
+    private function recalculateAggregates(Product $product): void
+    {
+        $variants = $product->variants()->where('is_active', true)->get(['price', 'stock']);
+        if ($variants->count() === 0) {
+            return;
+        }
+        $product->stock = (int) $variants->sum('stock');
+        $minPrice = $variants->min(fn ($v) => (float) $v->price);
+        if ($minPrice !== null) {
+            $product->price = $minPrice;
+        }
+        $product->save();
+    }
+
     public function index(Request $request)
     {
         $locale = app()->getLocale();
@@ -116,6 +131,7 @@ class ProductsController extends Controller
             if (!empty($variants)) {
                 $rows = [];
                 $seen = [];
+                $ts = now();
                 foreach ($variants as $v) {
                     $size = $v['size'] ?? null;
                     $color = $v['color'] ?? null;
@@ -125,24 +141,25 @@ class ProductsController extends Controller
                     }
                     $seen[$key] = true;
                     $rows[] = [
+                        'id' => (string) Str::uuid(),
                         'product_id' => $product->id,
                         'size' => $size,
                         'color' => $color,
                         'price' => $v['price'],
                         'stock' => (int) ($v['stock'] ?? 0),
-                        'is_active' => (bool) ($v['is_active'] ?? true),
-                        'created_at' => now(),
-                        'updated_at' => now(),
+                        'is_active' => ((bool) ($v['is_active'] ?? true)) && ((int) ($v['stock'] ?? 0) > 0),
+                        'created_at' => $ts,
+                        'updated_at' => $ts,
                     ];
                 }
                 if (!empty($rows)) {
                     ProductVariant::query()->insert($rows);
-                    $product->stock = array_sum(array_map(fn ($r) => (int) ($r['stock'] ?? 0), $rows));
-                    $product->save();
+                    $this->recalculateAggregates($product);
                 }
             }
 
             $this->handleImage($request, $product);
+            $this->handleGalleryImages($request, $product);
 
             return $product;
         });
@@ -174,14 +191,19 @@ class ProductsController extends Controller
             'stock' => ['required', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+        $active = (bool) ($data['is_active'] ?? true);
+        if ((int) $data['stock'] <= 0) {
+            $active = false;
+        }
         $variant = \App\Models\ProductVariant::create([
             'product_id' => $product->id,
             'size' => $data['size'],
             'color' => $data['color'] ?? null,
             'price' => $data['price'],
             'stock' => (int) $data['stock'],
-            'is_active' => (bool) ($data['is_active'] ?? true),
+            'is_active' => $active,
         ]);
+        $this->recalculateAggregates($product);
         return response()->json($variant, 201);
     }
 
@@ -197,13 +219,18 @@ class ProductsController extends Controller
             'stock' => ['required', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
         ]);
+        $active = (bool) ($data['is_active'] ?? true);
+        if ((int) $data['stock'] <= 0) {
+            $active = false;
+        }
         $variant->update([
             'size' => $data['size'],
             'color' => $data['color'] ?? null,
             'price' => $data['price'],
             'stock' => (int) $data['stock'],
-            'is_active' => (bool) ($data['is_active'] ?? true),
+            'is_active' => $active,
         ]);
+        $this->recalculateAggregates($product);
         return response()->json(['status' => 'ok']);
     }
 
@@ -213,6 +240,7 @@ class ProductsController extends Controller
             abort(404);
         }
         $variant->delete();
+        $this->recalculateAggregates($product);
         return response()->json(['status' => 'ok']);
     }
 
@@ -235,6 +263,8 @@ class ProductsController extends Controller
             'stock' => ['nullable', 'integer', 'min:0'],
             'is_active' => ['nullable', 'boolean'],
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'gallery_images' => ['nullable', 'array', 'max:5'],
+            'gallery_images.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ]);
 
         $locale = app()->getLocale();
@@ -268,6 +298,31 @@ class ProductsController extends Controller
         $product->save();
     }
 
+    private function handleGalleryImages(Request $request, Product $product): void
+    {
+        $files = $request->file('gallery_images', []);
+        if (!is_array($files) || empty($files)) {
+            return;
+        }
+        $existingCount = (int) $product->images()->count();
+        $remainingSlots = max(0, 5 - $existingCount);
+        if ($remainingSlots <= 0) {
+            return;
+        }
+        $files = array_slice($files, 0, $remainingSlots);
+        $nextOrder = (int) ($product->images()->max('sort_order') ?? 0);
+        foreach ($files as $file) {
+            if (!$file) continue;
+            $path = $file->store('products', 'public');
+            $nextOrder++;
+            ProductImage::create([
+                'product_id' => $product->id,
+                'path' => $path,
+                'sort_order' => $nextOrder,
+            ]);
+        }
+    }
+
     public function destroyMainImage(Request $request, Product $product)
     {
         if ($product->image_path) {
@@ -280,6 +335,9 @@ class ProductsController extends Controller
 
     public function storeImage(Request $request, Product $product)
     {
+        if ($product->images()->count() >= 5) {
+            return response()->json(['message' => 'Máximo 5 imágenes en galería.'], 422);
+        }
         $data = $request->validate([
             'image' => ['required', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
         ]);

@@ -96,7 +96,7 @@ export default function Show({ event }) {
                                                 disabled={!isAuthed || adding === t.id || (t.stock ?? 0) <= 0}
                                                 onClick={() => addTicketToCart(t.id)}
                                             >
-                                                {t.code} • {t.price}€ • stock {t.stock} {isAuthed ? '' : '• login'}
+                                                {(t.name || t.code)} • {t.price}€ • stock {t.stock} {isAuthed ? '' : '• login'}
                                             </button>
                                         ))}
                                     </div>
@@ -202,7 +202,7 @@ export default function Show({ event }) {
                                                             disabled={!isAuthed || adding === t.id || (t.stock ?? 0) <= 0}
                                                             onClick={() => addTicketToCart(t.id)}
                                                         >
-                                                            {t.code} • {t.price}€ • stock {t.stock} {isAuthed ? '' : '• login'}
+                                                            {(t.name || t.code)} • {t.price}€ • stock {t.stock} {isAuthed ? '' : '• login'}
                                                         </button>
                                                     ))
                                                 ) : (

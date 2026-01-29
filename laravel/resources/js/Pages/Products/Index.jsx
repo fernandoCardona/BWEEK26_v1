@@ -4,6 +4,7 @@ import Button from '@/Components/UI/Button';
 import { motion } from 'framer-motion';
 import { Link, router } from '@inertiajs/react';
 import axios from 'axios';
+import { FiImage } from 'react-icons/fi';
 
 export default function Index({ products, tickets = [] }) {
     const eventLabel = (ev) => {
@@ -94,6 +95,16 @@ export default function Index({ products, tickets = [] }) {
                                     transition={{ delay: index * 0.05 }}
                                     className="glass-card group p-6"
                                 >
+                                    <div className="rounded-2xl overflow-hidden bg-white/5 border border-white/10 mb-5 aspect-[16/9] relative">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                                        {t?.event?.image_url ? (
+                                            <img src={t.event.image_url} alt="Evento" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-gray-500">
+                                                <FiImage size={32} />
+                                            </div>
+                                        )}
+                                    </div>
                                     <h3 className="text-xl font-bold mb-2 group-hover:text-accent-primary transition-colors">
                                         {(t.code || 'TICKET').toUpperCase()}
                                     </h3>
@@ -101,7 +112,16 @@ export default function Index({ products, tickets = [] }) {
                                         {eventLabel(t.event)}
                                     </p>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-2xl font-black text-white">{t.price}€</span>
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-10 h-10 rounded-xl border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center shrink-0">
+                                                {t.image_url ? (
+                                                    <img src={t.image_url} alt="Ticket" className="w-full h-full object-contain p-1" />
+                                                ) : (
+                                                    <FiImage size={18} className="text-gray-500" />
+                                                )}
+                                            </div>
+                                            <span className="text-2xl font-black text-white whitespace-nowrap">{t.price}€</span>
+                                        </div>
                                         <Button
                                             variant="secondary"
                                             className="px-6 py-2 text-sm"

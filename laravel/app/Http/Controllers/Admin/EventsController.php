@@ -9,8 +9,10 @@ use App\Models\EventSponsor;
 use App\Models\EventTicketType;
 use App\Models\AgendaLocation;
 use App\Models\AgendaSubeventTemplate;
+use App\Models\TicketTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -67,11 +69,13 @@ class EventsController extends Controller
             ->get(['id', 'name']);
 
         $agenda = $this->agendaProps();
+        $ticketTemplates = $this->ticketTemplatesProps();
 
         return Inertia::render('Admin/Events/Edit', [
             'event' => null,
             'parents' => $parents,
             'agenda' => $agenda,
+            'ticketTemplates' => $ticketTemplates,
             'defaults' => [
                 'parent_event_id' => $parentEventId,
             ],
@@ -84,7 +88,7 @@ class EventsController extends Controller
 
     public function edit(Request $request, Event $event)
     {
-        $event->load(['ticketTypes', 'sponsors', 'programItems', 'subevents.ticketTypes']);
+        $event->load(['ticketTypes.ticketTemplate', 'sponsors', 'programItems', 'subevents.ticketTypes.ticketTemplate']);
         $parents = Event::query()
             ->whereNull('parent_event_id')
             ->where('id', '!=', $event->id)
@@ -93,11 +97,13 @@ class EventsController extends Controller
 
         $role = $request->user()?->role;
         $agenda = $this->agendaProps();
+        $ticketTemplates = $this->ticketTemplatesProps();
 
         return Inertia::render('Admin/Events/Edit', [
             'event' => $this->mapEvent($event, true),
             'parents' => $parents,
             'agenda' => $agenda,
+            'ticketTemplates' => $ticketTemplates,
             'defaults' => null,
             'can' => [
                 'delete' => $role === 'super_admin',
@@ -106,6 +112,26 @@ class EventsController extends Controller
                 'manage_program' => in_array($role, ['super_admin', 'admin'], true),
             ],
         ]);
+    }
+
+    private function ticketTemplatesProps(): array
+    {
+        if (!Schema::hasTable('ticket_templates')) {
+            return [];
+        }
+
+        return TicketTemplate::query()
+            ->orderByRaw('lower(name) asc')
+            ->orderBy('code')
+            ->get(['id', 'name', 'code', 'is_active'])
+            ->map(fn (TicketTemplate $t) => [
+                'id' => $t->id,
+                'name' => $t->name,
+                'code' => $t->code,
+                'is_active' => (bool) $t->is_active,
+            ])
+            ->values()
+            ->all();
     }
 
     private function agendaProps(): array
@@ -370,13 +396,7 @@ class EventsController extends Controller
             'flyer' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
             'is_active' => ['nullable', 'boolean'],
             'tickets_enabled' => ['nullable', 'boolean'],
-            'ticket_code' => [Rule::requiredIf(fn () => (bool) $request->boolean('tickets_enabled')), 'string', 'max:40', 'regex:/^[A-Za-z0-9][A-Za-z0-9 _-]*$/'],
-            'ticket_price' => [Rule::requiredIf(fn () => (bool) $request->boolean('tickets_enabled')), 'numeric', 'min:0'],
-            'ticket_stock' => [Rule::requiredIf(fn () => (bool) $request->boolean('tickets_enabled')), 'integer', 'min:0'],
-            'ticket_external_purchase_url' => ['nullable', 'string', 'max:2048'],
-            'ticket_description' => ['nullable', 'string', 'max:8000'],
-            'ticket_legal_terms' => ['nullable', 'string', 'max:8000'],
-            'ticket_image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'ticket_template_id' => [Rule::requiredIf(fn () => (bool) $request->boolean('tickets_enabled')), 'string', Rule::exists('ticket_templates', 'id')],
         ]);
 
         $locale = app()->getLocale();
@@ -425,33 +445,93 @@ class EventsController extends Controller
         }
 
         if ((bool) ($data['tickets_enabled'] ?? false)) {
-            $ticketCode = strtoupper(str_replace(' ', '_', trim((string) $data['ticket_code'])));
-            $stock = (int) $data['ticket_stock'];
+            $tpl = TicketTemplate::query()->findOrFail($data['ticket_template_id']);
+            $stock = (int) $tpl->stock;
+            $isExpired = $sub->end_at && $sub->end_at->lt(now());
+            $isActive = !$isExpired && $stock > 0 && (bool) $tpl->is_active;
+
             $ticketType = EventTicketType::query()->updateOrCreate(
                 [
                     'event_id' => $sub->id,
-                    'code' => $ticketCode,
+                    'code' => $tpl->code,
                 ],
                 [
-                    'price' => $data['ticket_price'],
+                    'ticket_template_id' => $tpl->id,
+                    'price' => $tpl->price,
                     'stock' => $stock,
-                    'external_purchase_url' => $data['ticket_external_purchase_url'] ?? null,
-                    'description' => $data['ticket_description'] ?? null,
-                    'legal_terms' => $data['ticket_legal_terms'] ?? null,
-                    'is_active' => $stock > 0,
+                    'external_purchase_url' => $tpl->external_purchase_url,
+                    'description' => $tpl->description,
+                    'legal_terms' => $tpl->legal_terms,
+                    'is_active' => $isActive,
                 ]
             );
 
-            if ($request->hasFile('ticket_image')) {
-                if ($ticketType->image_path) {
-                    Storage::disk('public')->delete($ticketType->image_path);
-                }
-                $ticketType->image_path = $request->file('ticket_image')->store($sub->media_folder . '/tickets', 'public');
-                $ticketType->save();
+            if ($tpl->image_path) {
+                $this->copyTicketTemplateImageToEvent($tpl, $sub, $ticketType);
             }
         }
 
         return back();
+    }
+
+    public function attachTicketTemplate(Request $request, Event $event)
+    {
+        $role = (string) ($request->user()?->role ?? '');
+        if (!in_array($role, ['admin', 'super_admin'], true)) {
+            abort(403);
+        }
+
+        $data = $request->validate([
+            'ticket_template_id' => ['required', 'string', Rule::exists('ticket_templates', 'id')],
+        ]);
+
+        $tpl = TicketTemplate::query()->findOrFail($data['ticket_template_id']);
+        $stock = (int) $tpl->stock;
+        $isExpired = $event->end_at && $event->end_at->lt(now());
+        $isActive = !$isExpired && $stock > 0 && (bool) $tpl->is_active;
+
+        $ticketType = EventTicketType::query()->updateOrCreate(
+            [
+                'event_id' => $event->id,
+                'code' => $tpl->code,
+            ],
+            [
+                'ticket_template_id' => $tpl->id,
+                'price' => $tpl->price,
+                'stock' => $stock,
+                'external_purchase_url' => $tpl->external_purchase_url,
+                'description' => $tpl->description,
+                'legal_terms' => $tpl->legal_terms,
+                'is_active' => $isActive,
+            ]
+        );
+
+        if ($tpl->image_path) {
+            $this->copyTicketTemplateImageToEvent($tpl, $event, $ticketType);
+        }
+
+        return back();
+    }
+
+    private function copyTicketTemplateImageToEvent(TicketTemplate $tpl, Event $event, EventTicketType $ticketType): void
+    {
+        $this->ensureMediaFolder($event);
+
+        $ext = pathinfo((string) $tpl->image_path, PATHINFO_EXTENSION);
+        $ext = $ext ? '.' . $ext : '';
+        $dest = $event->media_folder . '/tickets/' . Str::uuid() . $ext;
+
+        if ($ticketType->image_path) {
+            Storage::disk('public')->delete($ticketType->image_path);
+        }
+
+        try {
+            Storage::disk('public')->makeDirectory($event->media_folder . '/tickets');
+            Storage::disk('public')->copy($tpl->image_path, $dest);
+            $ticketType->image_path = $dest;
+            $ticketType->save();
+        } catch (\Throwable $e) {
+        }
     }
 
     public function destroy(Request $request, Event $event)
@@ -998,6 +1078,7 @@ class EventsController extends Controller
                 ? $event->ticketTypes->sortBy('code')->values()->map(function (EventTicketType $t) {
                     return [
                         'id' => $t->id,
+                        'name' => $t->ticketTemplate?->name,
                         'code' => $t->code,
                         'price' => (string) $t->price,
                         'stock' => (int) $t->stock,

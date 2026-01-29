@@ -5,17 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
-class EventTicketType extends Model
+class TicketTemplate extends Model
 {
-    protected $table = 'event_ticket_types';
+    protected $table = 'ticket_templates';
 
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'id',
-        'event_id',
-        'ticket_template_id',
+        'name',
         'code',
         'price',
         'stock',
@@ -43,13 +42,8 @@ class EventTicketType extends Model
         });
     }
 
-    public function event()
+    public function eventTicketTypes()
     {
-        return $this->belongsTo(Event::class);
-    }
-
-    public function ticketTemplate()
-    {
-        return $this->belongsTo(TicketTemplate::class, 'ticket_template_id');
+        return $this->hasMany(EventTicketType::class, 'ticket_template_id');
     }
 }

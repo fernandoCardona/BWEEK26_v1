@@ -14,6 +14,21 @@ use Illuminate\Support\Facades\Http;
 
 class CheckoutController extends Controller
 {
+    private function recalculateProductFromVariants(\App\Models\Product $product): void
+    {
+        $variants = \App\Models\ProductVariant::query()->where('product_id', $product->id)->where('is_active', true)->get(['price', 'stock']);
+        if ($variants->isEmpty()) {
+            $product->stock = 0;
+            $product->save();
+            return;
+        }
+        $product->stock = (int) $variants->sum('stock');
+        $minPrice = $variants->min(fn ($v) => (float) $v->price);
+        if ($minPrice !== null) {
+            $product->price = $minPrice;
+        }
+        $product->save();
+    }
     public function createStripeCheckout(Request $request)
     {
         $user = $request->user();
@@ -375,6 +390,12 @@ class CheckoutController extends Controller
                             continue;
                         }
                         $v->decrement('stock', $qty);
+                        $v->refresh();
+                        if ((int) $v->stock <= 0) {
+                            $v->is_active = false;
+                            $v->save();
+                        }
+                        $this->recalculateProductFromVariants($p);
                         TransactionItem::create([
                             'transaction_id' => $tx->id,
                             'kind' => 'product',
@@ -418,6 +439,10 @@ class CheckoutController extends Controller
                         continue;
                     }
                     $type->decrement('stock', $qty);
+                    if ((int) $type->stock <= 0) {
+                        $type->is_active = false;
+                        $type->save();
+                    }
                     for ($i = 0; $i < $qty; $i++) {
                         $ticket = app(\App\Services\TicketingService::class)->issueTicket($tx->user, $ev, $type->code, (float) $type->price, $type->id);
                         $ticket->update(['transaction_id' => $tx->id]);

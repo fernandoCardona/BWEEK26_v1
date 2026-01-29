@@ -44,7 +44,7 @@ class EventController extends Controller
      */
     public function show(Event $event)
     {
-        $event->load(['ticketTypes', 'subevents.ticketTypes', 'sponsors', 'programItems']);
+        $event->load(['ticketTypes.ticketTemplate', 'subevents.ticketTypes.ticketTemplate', 'sponsors', 'programItems']);
 
         if (!$event->is_active || ($event->end_at && $event->end_at->lt(now()))) {
             abort(404);
@@ -92,6 +92,7 @@ class EventController extends Controller
                         }
                         return [
                             'id' => $t->id,
+                            'name' => $t->ticketTemplate?->name,
                             'code' => $t->code,
                             'price' => (string) $t->price,
                             'stock' => (int) $t->stock,
@@ -120,6 +121,7 @@ class EventController extends Controller
                                 }
                                 return [
                                     'id' => $t->id,
+                                    'name' => $t->ticketTemplate?->name,
                                     'code' => $t->code,
                                     'price' => (string) $t->price,
                                     'stock' => (int) $t->stock,

@@ -15,6 +15,21 @@ use Inertia\Inertia;
 
 class CartController extends Controller
 {
+    private function recalculateProductFromVariants(Product $product): void
+    {
+        $variants = \App\Models\ProductVariant::query()->where('product_id', $product->id)->where('is_active', true)->get(['price', 'stock']);
+        if ($variants->isEmpty()) {
+            $product->stock = 0;
+            $product->save();
+            return;
+        }
+        $product->stock = (int) $variants->sum('stock');
+        $minPrice = $variants->min(fn ($v) => (float) $v->price);
+        if ($minPrice !== null) {
+            $product->price = $minPrice;
+        }
+        $product->save();
+    }
     public function page(Request $request)
     {
         $user = $request->user();
@@ -211,17 +226,31 @@ class CartController extends Controller
 
             $productIds = $items->pluck('product_id')->unique()->values();
             $products = Product::query()->whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
+            $variantIds = $items->pluck('product_variant_id')->filter()->unique()->values();
+            $variants = \App\Models\ProductVariant::query()->whereIn('id', $variantIds)->lockForUpdate()->get()->keyBy('id');
 
             $total = 0.0;
             foreach ($items as $item) {
-                $p = $products->get($item->product_id);
-                if (!$p || !$p->is_active) {
-                    abort(422, 'Producto no disponible');
+                if ($item->product_variant_id) {
+                    $v = $variants->get($item->product_variant_id);
+                    $p = $v ? $products->get($v->product_id) : null;
+                    if (!$v || !$p || !$v->is_active || !$p->is_active) {
+                        abort(422, 'Variante no disponible');
+                    }
+                    if ($v->stock < $item->quantity) {
+                        abort(422, 'No hay stock suficiente para la talla seleccionada');
+                    }
+                    $total += ((float) $v->price) * (int) $item->quantity;
+                } else {
+                    $p = $products->get($item->product_id);
+                    if (!$p || !$p->is_active) {
+                        abort(422, 'Producto no disponible');
+                    }
+                    if ($p->stock < $item->quantity) {
+                        abort(422, 'No hay stock suficiente');
+                    }
+                    $total += ((float) $p->price) * (int) $item->quantity;
                 }
-                if ($p->stock < $item->quantity) {
-                    abort(422, 'No hay stock suficiente');
-                }
-                $total += ((float) $p->price) * (int) $item->quantity;
             }
 
             $tx = Transaction::create([
@@ -234,21 +263,50 @@ class CartController extends Controller
             ]);
 
             foreach ($items as $item) {
-                $p = $products->get($item->product_id);
-                $unit = (float) $p->price;
                 $qty = (int) $item->quantity;
-
-                $p->decrement('stock', $qty);
-
-                TransactionItem::create([
-                    'transaction_id' => $tx->id,
-                    'kind' => 'product',
-                    'product_id' => $p->id,
-                    'title' => $p->getTranslation('name', app()->getLocale()) ?? null,
-                    'quantity' => $qty,
-                    'unit_price' => $unit,
-                    'total_price' => round($unit * $qty, 2),
-                ]);
+                if ($item->product_variant_id) {
+                    $v = $variants->get($item->product_variant_id);
+                    $p = $v ? $products->get($v->product_id) : null;
+                    if (!$v || !$p) {
+                        continue;
+                    }
+                    $unit = (float) $v->price;
+                    $v->decrement('stock', $qty);
+                    $v->refresh();
+                    if ((int) $v->stock <= 0) {
+                        $v->is_active = false;
+                        $v->save();
+                    }
+                    $this->recalculateProductFromVariants($p);
+                    TransactionItem::create([
+                        'transaction_id' => $tx->id,
+                        'kind' => 'product',
+                        'product_id' => $p->id,
+                        'title' => ($p->getTranslation('name', app()->getLocale()) ?? null) . ' • ' . ($v->size ?? '') . ($v->color ? " • {$v->color}" : ''),
+                        'quantity' => $qty,
+                        'unit_price' => $unit,
+                        'total_price' => round($unit * $qty, 2),
+                        'meta' => [
+                            'product_variant_id' => $v->id,
+                        ],
+                    ]);
+                } else {
+                    $p = $products->get($item->product_id);
+                    if (!$p) {
+                        continue;
+                    }
+                    $unit = (float) $p->price;
+                    $p->decrement('stock', $qty);
+                    TransactionItem::create([
+                        'transaction_id' => $tx->id,
+                        'kind' => 'product',
+                        'product_id' => $p->id,
+                        'title' => $p->getTranslation('name', app()->getLocale()) ?? null,
+                        'quantity' => $qty,
+                        'unit_price' => $unit,
+                        'total_price' => round($unit * $qty, 2),
+                    ]);
+                }
             }
 
             CartItem::query()->where('cart_id', $cart->id)->delete();
