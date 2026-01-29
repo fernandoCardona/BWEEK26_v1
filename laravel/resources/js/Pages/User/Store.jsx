@@ -8,6 +8,24 @@ export default function Store({ transactions, cart }) {
     const openTx = useMemo(() => (transactions || []).find((t) => t.id === openTxId) ?? null, [openTxId, transactions]);
     useLockBodyScroll(!!openTx);
 
+    const statusMeta = (status) => {
+        const key = String(status || '').toLowerCase();
+        if (key === 'failed') return { label: 'FAILED', cls: 'text-red-400' };
+        if (key === 'pending') return { label: 'PENDING', cls: 'text-amber-400' };
+        if (key === 'completed' || key === 'success') return { label: 'SUCCESS', cls: 'text-emerald-400' };
+        return { label: String(status || '').toUpperCase() || '—', cls: 'text-gray-500' };
+    };
+
+    const txSummary = (tx) => {
+        const items = tx?.items ?? [];
+        const first = items[0];
+        const firstTitle = first?.title || first?.product?.name?.es || first?.product?.name?.en || (first?.ticket?.event?.name?.es || first?.ticket?.event?.name?.en) || 'Item';
+        const extra = items.length > 1 ? ` +${items.length - 1}` : '';
+        const hasTicket = items.some((it) => it?.kind === 'ticket' || !!it?.ticket);
+        const ticketHint = hasTicket ? ' + ticket' : '';
+        return `${firstTitle}${extra}${ticketHint}`;
+    };
+
     const cartItems = cart?.items ?? [];
     const cartTotal = useMemo(() => {
         return cartItems.reduce((sum, item) => sum + Number(item.unit_price || 0) * Number(item.quantity || 0), 0).toFixed(2);
@@ -59,10 +77,11 @@ export default function Store({ transactions, cart }) {
                                         <p className="text-xs text-gray-500">
                                             {t.created_at ? `${formatDMY(t.created_at)} ${formatTimeHM(t.created_at)}` : '-'} • {t.items?.length ?? 0} items
                                         </p>
+                                        <p className="text-xs text-gray-400 truncate mt-1">{txSummary(t)}</p>
                                     </div>
                                     <div className="text-right shrink-0">
                                         <p className="text-sm font-black">{t.total_amount}€</p>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">{t.status}</p>
+                                        <p className={`text-[10px] uppercase tracking-widest font-black ${statusMeta(t.status).cls}`}>{statusMeta(t.status).label}</p>
                                     </div>
                                 </div>
                             </button>
@@ -84,14 +103,38 @@ export default function Store({ transactions, cart }) {
                                 <h3 className="text-2xl font-black tracking-tight truncate">
                                     {openTx.type === 'ticket' ? 'Transacción de tickets' : openTx.type === 'merch' ? 'Transacción de merch' : 'Transacción'}
                                 </h3>
-                                <p className="text-sm text-gray-400">
-                                    {openTx.created_at ? `${formatDMY(openTx.created_at)} ${formatTimeHM(openTx.created_at)}` : '-'} • {openTx.status}
-                                </p>
+                                <div className="text-sm text-gray-400 flex items-center gap-3">
+                                    <span>{openTx.created_at ? `${formatDMY(openTx.created_at)} ${formatTimeHM(openTx.created_at)}` : '-'}</span>
+                                    <span className={`uppercase tracking-widest font-black ${statusMeta(openTx.status).cls}`}>{statusMeta(openTx.status).label}</span>
+                                </div>
                             </div>
                             <button className="btn-secondary px-4 py-2 text-sm" onClick={() => setOpenTxId(null)}>
                                 Cerrar
                             </button>
                         </div>
+
+                        {(() => {
+                            const items = openTx.items ?? [];
+                            const subtotal = items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
+                            const total = Number(openTx.total_amount || 0);
+                            const taxes = Math.max(0, Number((total - subtotal).toFixed(2)));
+                            return (
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Subtotal</div>
+                                        <div className="text-lg font-black mt-1">{subtotal.toFixed(2)}€</div>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Impuestos</div>
+                                        <div className="text-lg font-black mt-1">{taxes.toFixed(2)}€</div>
+                                    </div>
+                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Total</div>
+                                        <div className="text-lg font-black mt-1">{total.toFixed(2)}€</div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         <div className="space-y-3">
                             {(openTx.items ?? []).map((it) => (
@@ -104,8 +147,8 @@ export default function Store({ transactions, cart }) {
                                         <p className="text-xs text-gray-500">x{it.quantity}</p>
                                     </div>
                                     <div className="text-right shrink-0">
-                                        <p className="text-sm font-bold">{it.total_price}€</p>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest">{it.kind}</p>
+                                        <p className="text-sm font-black">{it.total_price}€</p>
+                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">{it.kind}</p>
                                     </div>
                                 </div>
                             ))}

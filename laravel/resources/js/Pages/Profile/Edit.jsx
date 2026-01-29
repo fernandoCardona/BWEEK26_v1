@@ -172,9 +172,11 @@ export default function Edit() {
 
                         <SwitchToggle checked={profileForm.data.no_newsletter} onChange={(v) => profileForm.setData('no_newsletter', v)} labelOn="No quiero recibir newsletter" labelOff="Sí quiero recibir newsletter" />
 
-                        <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={profileForm.processing}>
-                            Guardar cambios
-                        </button>
+                        <div className="flex items-center justify-end pt-2">
+                            <button type="submit" className="btn-primary px-6 py-3 text-sm" disabled={profileForm.processing}>
+                                Guardar cambios
+                            </button>
+                        </div>
                     </form>
                 </div>
 
