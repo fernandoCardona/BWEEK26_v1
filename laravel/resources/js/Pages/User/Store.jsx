@@ -2,11 +2,19 @@ import React, { useMemo, useState } from 'react';
 import UserLayout from '@/Layouts/UserLayout';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 import { formatDMY, formatTimeHM } from '@/utils/date';
+import { usePage } from '@inertiajs/react';
 
 export default function Store({ transactions, cart }) {
+    const { props } = usePage();
+    const user = props?.auth?.user;
     const [openTxId, setOpenTxId] = useState(null);
     const openTx = useMemo(() => (transactions || []).find((t) => t.id === openTxId) ?? null, [openTxId, transactions]);
     useLockBodyScroll(!!openTx);
+
+    const isSuccessStatus = (status) => {
+        const key = String(status || '').toLowerCase();
+        return key === 'completed' || key === 'success';
+    };
 
     const statusMeta = (status) => {
         const key = String(status || '').toLowerCase();
@@ -95,70 +103,108 @@ export default function Store({ transactions, cart }) {
             {openTx && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6" onClick={() => setOpenTxId(null)}>
                     <div
-                        className="glass-card max-w-2xl w-full p-6 border border-white/10 bg-white/10 shadow-2xl shadow-black/60"
+                        className="glass-card max-w-3xl w-full p-6 border border-white/10 bg-white/10 shadow-2xl shadow-black/60"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-start justify-between gap-4 mb-6">
-                            <div className="min-w-0">
-                                <h3 className="text-2xl font-black tracking-tight truncate">
-                                    {openTx.type === 'ticket' ? 'Transacción de tickets' : openTx.type === 'merch' ? 'Transacción de merch' : 'Transacción'}
-                                </h3>
-                                <div className="text-sm text-gray-400 flex items-center gap-3">
-                                    <span>{openTx.created_at ? `${formatDMY(openTx.created_at)} ${formatTimeHM(openTx.created_at)}` : '-'}</span>
-                                    <span className={`uppercase tracking-widest font-black ${statusMeta(openTx.status).cls}`}>{statusMeta(openTx.status).label}</span>
-                                </div>
-                            </div>
-                            <button className="btn-secondary px-4 py-2 text-sm" onClick={() => setOpenTxId(null)}>
-                                Cerrar
-                            </button>
-                        </div>
-
                         {(() => {
                             const items = openTx.items ?? [];
                             const subtotal = items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
                             const total = Number(openTx.total_amount || 0);
                             const taxes = Math.max(0, Number((total - subtotal).toFixed(2)));
+                            const success = isSuccessStatus(openTx.status);
+                            const docTitle = success ? 'INVOICE' : 'PRO FORMA INVOICE';
+                            const note =
+                                String(openTx.status || '').toLowerCase() === 'failed'
+                                    ? 'Pago fallido. Documento provisional (pro forma) sin validez de factura.'
+                                    : String(openTx.status || '').toLowerCase() === 'pending'
+                                      ? 'Pago pendiente. Documento provisional (pro forma) hasta confirmación.'
+                                      : success
+                                        ? 'Factura emitida para tu compra.'
+                                        : 'Documento provisional.';
                             return (
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Subtotal</div>
-                                        <div className="text-lg font-black mt-1">{subtotal.toFixed(2)}€</div>
+                                <>
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="min-w-0">
+                                            <div className="text-[11px] text-gray-500 uppercase tracking-widest font-bold">{docTitle}</div>
+                                            <h3 className="text-2xl font-black tracking-tight truncate mt-1">
+                                                {openTx.type === 'ticket' ? 'Tickets' : openTx.type === 'merch' ? 'Merchandising' : 'Transacción'}
+                                            </h3>
+                                            <div className="text-sm text-gray-400 flex items-center gap-3 mt-1">
+                                                <span>{openTx.created_at ? `${formatDMY(openTx.created_at)} ${formatTimeHM(openTx.created_at)}` : '-'}</span>
+                                                <span className={`uppercase tracking-widest font-black ${statusMeta(openTx.status).cls}`}>{statusMeta(openTx.status).label}</span>
+                                            </div>
+                                        </div>
+                                        <button className="btn-secondary px-4 py-2 text-sm" onClick={() => setOpenTxId(null)}>
+                                            Cerrar
+                                        </button>
                                     </div>
-                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Impuestos</div>
-                                        <div className="text-lg font-black mt-1">{taxes.toFixed(2)}€</div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">Bill To</div>
+                                            <div className="text-sm font-black">{user?.name || '—'}</div>
+                                            <div className="text-xs text-gray-400 mt-1">{user?.email || '—'}</div>
+                                            {user?.address_line1 ? <div className="text-xs text-gray-400 mt-2">{user.address_line1}</div> : null}
+                                            {user?.address_line2 ? <div className="text-xs text-gray-400">{user.address_line2}</div> : null}
+                                            {(user?.postal_code || user?.city || user?.country) ? (
+                                                <div className="text-xs text-gray-400">
+                                                    {[user?.postal_code, user?.city, user?.country].filter(Boolean).join(' • ')}
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">Details</div>
+                                            <div className="text-xs text-gray-400">Invoice #: <span className="font-black text-gray-200">{openTx.id}</span></div>
+                                            <div className="text-xs text-gray-400 mt-1">Currency: <span className="font-black text-gray-200">{(openTx.currency || 'EUR').toUpperCase()}</span></div>
+                                            <div className="text-xs text-gray-400 mt-1">Items: <span className="font-black text-gray-200">{items.length}</span></div>
+                                        </div>
                                     </div>
-                                    <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Total</div>
-                                        <div className="text-lg font-black mt-1">{total.toFixed(2)}€</div>
+
+                                    <div className="mt-6 border border-white/10 rounded-2xl overflow-hidden">
+                                        <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-white/5 text-[10px] text-gray-500 uppercase tracking-widest font-bold">
+                                            <div className="col-span-6">Descripción</div>
+                                            <div className="col-span-2 text-right">Cant.</div>
+                                            <div className="col-span-2 text-right">Unit</div>
+                                            <div className="col-span-2 text-right">Importe</div>
+                                        </div>
+                                        <div className="divide-y divide-white/10">
+                                            {items.map((it) => (
+                                                <div key={it.id} className="grid grid-cols-12 gap-3 px-4 py-3">
+                                                    <div className="col-span-6 min-w-0">
+                                                        <div className="text-sm font-black truncate">{it.title || 'Item'}</div>
+                                                        {it.ticket?.event ? (
+                                                            <div className="text-xs text-gray-400 truncate">{it.ticket.event.name?.es || it.ticket.event.name?.en || 'Evento'}</div>
+                                                        ) : null}
+                                                    </div>
+                                                    <div className="col-span-2 text-right text-sm font-bold text-gray-200">{Number(it.quantity || 0)}</div>
+                                                    <div className="col-span-2 text-right text-sm font-bold text-gray-200">{Number(it.unit_price || 0).toFixed(2)}€</div>
+                                                    <div className="col-span-2 text-right text-sm font-black">{Number(it.total_price || 0).toFixed(2)}€</div>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+
+                                    <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                                        <div className="text-xs text-gray-400">{note}</div>
+                                        <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                                            <div className="flex items-center justify-between text-sm text-gray-400">
+                                                <span>Subtotal</span>
+                                                <span className="font-black text-gray-200">{subtotal.toFixed(2)}€</span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-sm text-gray-400 mt-2">
+                                                <span>Impuestos</span>
+                                                <span className="font-black text-gray-200">{taxes.toFixed(2)}€</span>
+                                            </div>
+                                            <div className="h-px bg-white/10 my-3" />
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-bold text-gray-300">Total</span>
+                                                <span className="text-2xl font-black">{total.toFixed(2)}€</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </>
                             );
                         })()}
-
-                        <div className="space-y-3">
-                            {(openTx.items ?? []).map((it) => (
-                                <div key={it.id} className="flex items-start justify-between gap-4 p-4 bg-white/5 rounded-2xl border border-white/10">
-                                    <div className="min-w-0">
-                                        <p className="font-bold text-sm truncate">{it.title || 'Item'}</p>
-                                        {it.ticket?.event && (
-                                            <p className="text-xs text-gray-500 truncate">{it.ticket.event.name?.es || it.ticket.event.name?.en || 'Evento'}</p>
-                                        )}
-                                        <p className="text-xs text-gray-500">x{it.quantity}</p>
-                                    </div>
-                                    <div className="text-right shrink-0">
-                                        <p className="text-sm font-black">{it.total_price}€</p>
-                                        <p className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">{it.kind}</p>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="flex items-center justify-between pt-6">
-                            <span className="text-sm text-gray-400">Total</span>
-                            <span className="text-2xl font-black">{openTx.total_amount}€</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-2">Una transacción realizada no se puede editar.</p>
                     </div>
                 </div>
             )}

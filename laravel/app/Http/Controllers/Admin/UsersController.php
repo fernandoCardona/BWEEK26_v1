@@ -232,7 +232,7 @@ class UsersController extends Controller
             'address_line2' => ['nullable', 'string', 'max:255'],
             'city' => ['nullable', 'string', 'max:120'],
             'postal_code' => ['nullable', 'string', 'max:30'],
-            'country' => ['nullable', 'string', 'max:2'],
+            'country' => ['nullable', 'string', 'max:120'],
             'no_newsletter' => ['nullable', 'boolean'],
             'avatar' => ['nullable', 'image', 'max:2048'],
             'remove_avatar' => ['nullable', 'boolean'],
@@ -258,7 +258,7 @@ class UsersController extends Controller
             'address_line2' => $data['address_line2'] ?? null,
             'city' => $data['city'] ?? null,
             'postal_code' => $data['postal_code'] ?? null,
-            'country' => strtoupper($data['country'] ?? '') ?: null,
+            'country' => trim((string) ($data['country'] ?? '')) ?: null,
             'newsletter_subscribed' => !((bool) ($data['no_newsletter'] ?? false)),
         ]);
 

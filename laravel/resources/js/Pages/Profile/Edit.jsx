@@ -163,9 +163,9 @@ export default function Edit() {
                                 error={profileForm.errors.postal_code}
                             />
                             <Field
-                                label="País (ISO)"
+                                label="País"
                                 value={profileForm.data.country}
-                                onChange={(e) => profileForm.setData('country', e.target.value.toUpperCase())}
+                                onChange={(e) => profileForm.setData('country', e.target.value)}
                                 error={profileForm.errors.country}
                             />
                         </div>
