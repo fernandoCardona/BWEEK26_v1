@@ -65,11 +65,11 @@ export default function Show({ product }) {
 
   return (
     <Layout>
-      <div className="pt-24 pb-16">
-        <div className="bg-white text-gray-900">
-          <div className="container mx-auto px-6 py-10 max-w-6xl">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              <div className="lg:col-span-7">
+      <div className="pt-32 pb-20 px-6">
+        <div className="container mx-auto max-w-6xl">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-7">
+              <div className="glass-card !p-6 border border-white/10 bg-white/5">
                 <div className="grid grid-cols-12 gap-4">
                   <div className="col-span-2 hidden md:block">
                     <div className="flex flex-col gap-3">
@@ -77,7 +77,7 @@ export default function Show({ product }) {
                         <button
                           key={img.id}
                           type="button"
-                          className={`w-16 h-16 rounded-md border ${imageIndex === idx ? 'border-red-500' : 'border-gray-200'} bg-gray-50 overflow-hidden`}
+                          className={`w-16 h-16 rounded-xl border ${imageIndex === idx ? 'border-accent-primary' : 'border-white/10'} bg-white/5 overflow-hidden`}
                           onClick={() => setImageIndex(idx)}
                         >
                           <img src={img.url} alt="thumb" className="w-full h-full object-cover" />
@@ -86,7 +86,7 @@ export default function Show({ product }) {
                     </div>
                   </div>
                   <div className="col-span-12 md:col-span-10">
-                    <div className="rounded-md border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center aspect-square">
+                    <div className="aspect-square rounded-2xl border border-white/10 bg-white/5 overflow-hidden flex items-center justify-center">
                       {currentImage ? <img src={currentImage} alt="Producto" className="w-full h-full object-contain" /> : null}
                     </div>
                     <div className="mt-4 flex items-center gap-2 flex-wrap md:hidden">
@@ -94,7 +94,7 @@ export default function Show({ product }) {
                         <button
                           key={img.id}
                           type="button"
-                          className={`w-14 h-14 rounded-md border ${imageIndex === idx ? 'border-red-500' : 'border-gray-200'} bg-gray-50 overflow-hidden`}
+                          className={`w-14 h-14 rounded-xl border ${imageIndex === idx ? 'border-accent-primary' : 'border-white/10'} bg-white/5 overflow-hidden`}
                           onClick={() => setImageIndex(idx)}
                         >
                           <img src={img.url} alt="thumb" className="w-full h-full object-cover" />
@@ -104,115 +104,110 @@ export default function Show({ product }) {
                   </div>
                 </div>
               </div>
+            </div>
 
-              <div className="lg:col-span-5">
-                <div className="space-y-4">
-                  <div className="text-sm text-gray-500">{product?.category || 'Producto'}</div>
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h1 className="text-2xl md:text-3xl font-black leading-tight">{product?.name?.es ?? product?.name ?? 'Producto'}</h1>
-                      <div className="text-sm text-gray-500">por bearssitges</div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <div className="inline-flex items-center gap-1 text-green-600">
-                          <FiStar size={14} />
-                          <FiStar size={14} />
-                          <FiStar size={14} />
-                          <FiStar size={14} />
-                          <FiStar size={14} />
-                        </div>
-                        <div className="text-xs text-gray-600">4,6</div>
-                        <div className="text-xs text-gray-500">(904 opiniones)</div>
-                      </div>
+            <div className="lg:col-span-5">
+              <div className="glass-card !p-6 border border-white/10 bg-white/5 space-y-6">
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-gray-500 font-bold">{product?.category || 'Producto'}</div>
+                  <h1 className="text-3xl md:text-4xl font-black tracking-tighter font-display mt-2">
+                    {product?.name?.es ?? product?.name ?? 'Producto'}
+                  </h1>
+                  <div className="mt-3 flex items-baseline justify-between gap-4">
+                    <div className="text-3xl font-black text-white">
+                      {Number(selected?.price ?? product?.price ?? 0).toFixed(2).replace('.', ',')}€
                     </div>
-                    <div className="text-3xl font-black whitespace-nowrap">{Number(selected?.price ?? product?.price ?? 0).toFixed(2).replace('.', ',')} €</div>
+                    <div className="flex items-center gap-1 text-accent-primary">
+                      <FiStar size={14} />
+                      <FiStar size={14} />
+                      <FiStar size={14} />
+                      <FiStar size={14} />
+                      <FiStar size={14} />
+                      <span className="ml-2 text-xs text-gray-400">4,6 · 904 opiniones</span>
+                    </div>
                   </div>
+                  {product?.description?.es ? <p className="text-gray-400 mt-4 whitespace-pre-line">{product.description.es}</p> : null}
+                </div>
 
-                  {variants.length ? (
-                    <div className="pt-2">
-                      <div className="text-sm font-semibold">Modelo de {String(product?.category || 'producto').toLowerCase()}:</div>
-                      <div className="mt-2 inline-flex items-center gap-2">
-                        <button type="button" className="px-4 py-2 rounded-md border border-red-500 text-sm font-bold bg-white">Clásico</button>
-                        <button type="button" className="px-4 py-2 rounded-md border border-gray-200 text-sm font-bold bg-white text-gray-500" disabled>
-                          Premium con bolsillo
+                {!!colors.length ? (
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <label className="block text-xs font-bold uppercase tracking-widest text-gray-500">Color</label>
+                      <div className="text-xs text-gray-400">{color ?? ''}</div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      {colors.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          className={`w-9 h-9 rounded-full border ${color === c ? 'border-accent-primary' : 'border-white/15'} bg-black/30 flex items-center justify-center`}
+                          onClick={() => {
+                            setColor(c);
+                            const first =
+                              variants.find((v) => v.color === c && v.is_active && (v.stock ?? 0) > 0) ??
+                              variants.find((v) => v.color === c) ??
+                              null;
+                            setVariantId(first?.id ?? null);
+                          }}
+                          title={c}
+                        >
+                          <span className="w-6 h-6 rounded-full" style={{ backgroundColor: colorHex(c) }} />
                         </button>
-                      </div>
+                      ))}
                     </div>
-                  ) : null}
+                  </div>
+                ) : null}
 
-                  {!!colors.length ? (
-                    <div className="pt-2">
-                      <div className="text-sm font-semibold">Color: <span className="font-normal text-gray-600">{color || '—'}</span></div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {colors.map((c) => (
+                {variants.length ? (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Elige talla</label>
+                    <div className="flex flex-wrap gap-3">
+                      {variantsForColor.map((v) => {
+                        const out = !v.is_active || (v.stock ?? 0) <= 0;
+                        const active = variantId === v.id;
+                        return (
                           <button
-                            key={c}
+                            key={v.id}
                             type="button"
-                            className={`w-8 h-8 rounded-full border ${color === c ? 'border-red-500' : 'border-gray-300'} bg-white flex items-center justify-center`}
-                            onClick={() => {
-                              setColor(c);
-                              const first = variants.find((v) => v.color === c && v.is_active && (v.stock ?? 0) > 0) ?? variants.find((v) => v.color === c) ?? null;
-                              setVariantId(first?.id ?? null);
-                            }}
-                            title={c}
+                            className={`min-w-[44px] px-4 py-3 rounded-full border text-sm font-bold flex flex-col items-center justify-center leading-tight ${
+                              active ? 'border-accent-primary text-white' : 'border-white/15 text-gray-200'
+                            } ${out ? 'opacity-40 cursor-not-allowed' : 'hover:bg-white/5'}`}
+                            disabled={out}
+                            onClick={() => setVariantId(v.id)}
                           >
-                            <span className="w-6 h-6 rounded-full" style={{ backgroundColor: colorHex(c) }} />
+                            <span>{v.size || '—'}</span>
+                            {out ? <span className="text-[10px] uppercase tracking-widest text-gray-400 mt-0.5">Agotado</span> : null}
                           </button>
-                        ))}
-                      </div>
+                        );
+                      })}
                     </div>
-                  ) : null}
+                    {selected ? <div className="mt-3 text-xs text-gray-500">stock {selected.stock ?? 0}</div> : null}
+                  </div>
+                ) : null}
 
-                  {variants.length ? (
-                    <div className="pt-2">
-                      <div className="text-sm font-semibold">Elige talla</div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {variantsForColor.map((v) => {
-                          const out = !v.is_active || (v.stock ?? 0) <= 0;
-                          const active = variantId === v.id;
-                          return (
-                            <button
-                              key={v.id}
-                              type="button"
-                              className={`px-4 py-2 rounded-md border text-sm font-bold ${
-                                active ? 'border-red-500' : 'border-gray-200'
-                              } ${out ? 'opacity-40 cursor-not-allowed' : 'hover:border-gray-400'}`}
-                              disabled={out}
-                              onClick={() => setVariantId(v.id)}
-                            >
-                              {v.size || '—'}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
+                <div className="flex items-center gap-3">
+                  <label className="text-xs font-bold uppercase tracking-widest text-gray-500">Cantidad</label>
+                  <button type="button" className="btn-secondary !px-4 !py-2 text-sm" onClick={() => setQty(Math.max(1, qty - 1))}>
+                    -
+                  </button>
+                  <span className="w-10 text-center text-sm font-bold">{qty}</span>
+                  <button type="button" className="btn-secondary !px-4 !py-2 text-sm" onClick={() => setQty(qty + 1)}>
+                    +
+                  </button>
+                </div>
 
+                <div className="space-y-3">
                   <button
                     type="button"
-                    className="w-full h-11 rounded-md bg-[#f3cc7a] hover:bg-[#f0c361] text-gray-900 font-bold inline-flex items-center justify-center gap-2"
+                    className="btn-primary w-full !py-3 !px-6 text-sm"
                     onClick={() => addToCart({ goToCart: true })}
                     disabled={(selected && (selected.stock ?? 0) <= 0) || (!selected && (product?.stock ?? 0) <= 0)}
                   >
-                    Añadir a la cesta
+                    {(selected && (selected.stock ?? 0) <= 0) || (!selected && (product?.stock ?? 0) <= 0) ? 'Agotado' : 'Añadir a la cesta'}
                   </button>
-                  <button type="button" className="w-full h-11 rounded-md border border-gray-300 bg-white text-gray-700 font-bold" disabled>
+                  <button type="button" className="btn-secondary w-full !py-3 !px-6 text-sm" disabled>
                     Personalizar
                   </button>
-
-                  <div className="pt-3 space-y-2 text-sm text-gray-600">
-                    <div className="flex items-center justify-between">
-                      <span>Estándar: 04 Feb - 09 Feb</span>
-                      <span className="text-green-600 font-bold">¡Gratis!*</span>
-                    </div>
-                    <div className="text-gray-500">Cambios o devoluciones gratis hasta 90 días</div>
-                  </div>
-
-                  {product?.description?.es ? (
-                    <div className="pt-4 border-t border-gray-200">
-                      <div className="text-sm font-bold mb-2">Descripción</div>
-                      <div className="text-sm text-gray-700 whitespace-pre-line">{product.description.es}</div>
-                    </div>
-                  ) : null}
                 </div>
               </div>
             </div>

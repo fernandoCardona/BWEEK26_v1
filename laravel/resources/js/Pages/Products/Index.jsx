@@ -30,93 +30,110 @@ export default function Index({ products, tickets = [] }) {
 
     return (
         <Layout>
-            <div className="pt-28 pb-16">
-                <div className="bg-white text-gray-900">
-                    <div className="container mx-auto px-6 py-10">
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                            <aside className="lg:col-span-3">
-                                <div className="sticky top-24">
-                                    <div className="text-xl font-bold mb-4">Categorías</div>
-                                    <button type="button" className="text-sm text-red-500 hover:underline mb-4" onClick={() => setCategory('all')}>
-                                        Mostrar todos
-                                    </button>
-                                    <div className="space-y-2">
-                                        {categories.map((c) => (
-                                            <button
-                                                key={c}
-                                                type="button"
-                                                className={`block text-left w-full text-sm ${category === c ? 'font-bold text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}
-                                                onClick={() => setCategory(c)}
-                                            >
-                                                {c}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </aside>
+            <div className="pt-32 pb-20 px-6">
+                <div className="container mx-auto">
+                    <header className="mb-10 text-center" data-aos="fade-down">
+                        <span className="text-accent-primary font-bold tracking-widest uppercase text-xs mb-4 block">Official Merchandising</span>
+                        <h1 className="text-5xl md:text-7xl font-black tracking-tighter uppercase font-display">
+                            SHOP THE <span className="text-gradient">COLLECTION</span>
+                        </h1>
+                    </header>
 
-                            <main className="lg:col-span-9">
-                                <div className="flex items-center justify-between gap-4 mb-6">
-                                    <div className="text-sm text-gray-500">Productos</div>
-                                    <div className="flex items-center gap-3">
-                                        <select
-                                            className="border border-gray-300 rounded-md px-3 py-2 text-sm bg-white"
-                                            value={sort}
-                                            onChange={(e) => setSort(e.target.value)}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        <aside className="lg:col-span-3">
+                            <div className="sticky top-28 glass-card !p-6">
+                                <div className="text-lg font-black font-display mb-4">Categorías</div>
+                                <button
+                                    type="button"
+                                    className={`text-sm font-bold tracking-wide ${
+                                        category === 'all' ? 'text-accent-primary' : 'text-gray-400 hover:text-white'
+                                    }`}
+                                    onClick={() => setCategory('all')}
+                                >
+                                    Mostrar todos
+                                </button>
+                                <div className="mt-4 space-y-2">
+                                    {categories.map((c) => (
+                                        <button
+                                            key={c}
+                                            type="button"
+                                            className={`block text-left w-full text-sm ${
+                                                category === c ? 'font-bold text-white' : 'text-gray-400 hover:text-white'
+                                            }`}
+                                            onClick={() => setCategory(c)}
                                         >
-                                            <option value="popular">Más populares</option>
-                                            <option value="price_asc">Precio: más barato</option>
-                                            <option value="price_desc">Precio: más caro</option>
-                                            <option value="name_asc">Nombre: A–Z</option>
-                                        </select>
-                                    </div>
+                                            {c}
+                                        </button>
+                                    ))}
                                 </div>
+                            </div>
+                        </aside>
 
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                                    {visibleProducts.map((p) => {
-                                        const title = p?.name?.es ?? p?.name ?? 'Producto';
-                                        const image = p.image_url || p.gallery?.[0]?.url || null;
-                                        const isLiked = liked.has(p.id);
-                                        return (
-                                            <div key={p.id} className="bg-white">
-                                                <div className="relative border border-gray-200 rounded-md overflow-hidden bg-gray-50">
-                                                    <Link href={route('products.show', p.id)} className="block">
-                                                        <div className="aspect-square">
-                                                            {image ? (
-                                                                <img src={image} alt={title} className="w-full h-full object-contain" />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-gray-300 font-black text-3xl">BSW</div>
-                                                            )}
-                                                        </div>
-                                                    </Link>
-                                                    <button
-                                                        type="button"
-                                                        className="absolute top-2 right-2 w-9 h-9 rounded-full bg-white/90 border border-gray-200 flex items-center justify-center"
-                                                        onClick={() => {
-                                                            const next = new Set(liked);
-                                                            if (next.has(p.id)) next.delete(p.id);
-                                                            else next.add(p.id);
-                                                            setLiked(next);
-                                                        }}
-                                                        aria-label="Favorito"
-                                                    >
-                                                        <FiHeart className={isLiked ? 'text-red-500' : 'text-gray-600'} />
-                                                    </button>
-                                                </div>
-                                                <div className="mt-2">
-                                                    <Link href={route('products.show', p.id)} className="block">
-                                                        <div className="text-sm font-semibold text-gray-900 line-clamp-2">{title}</div>
-                                                    </Link>
-                                                    <div className="text-xs text-gray-500">por bearssitges</div>
-                                                    <div className="mt-1 text-sm font-bold">{Number(p.price || 0).toFixed(2).replace('.', ',')} €</div>
+                        <main className="lg:col-span-9">
+                            <div className="flex items-center justify-between gap-4 mb-6">
+                                <div className="text-sm text-gray-400">Productos</div>
+                                <select
+                                    className="rounded-full px-4 py-2 text-sm bg-black/40 border border-white/15 text-gray-200 focus:border-accent-primary/60 focus:ring-accent-primary/30"
+                                    value={sort}
+                                    onChange={(e) => setSort(e.target.value)}
+                                >
+                                    <option value="popular">Más populares</option>
+                                    <option value="price_asc">Precio: más barato</option>
+                                    <option value="price_desc">Precio: más caro</option>
+                                    <option value="name_asc">Nombre: A–Z</option>
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                                {visibleProducts.map((p) => {
+                                    const title = p?.name?.es ?? p?.name ?? 'Producto';
+                                    const image = p.image_url || p.gallery?.[0]?.url || null;
+                                    const isLiked = liked.has(p.id);
+                                    return (
+                                        <div key={p.id} className="glass-card !p-4 group">
+                                            <div className="relative rounded-2xl overflow-hidden bg-white/5 border border-white/10">
+                                                <Link href={route('products.show', p.id)} className="block">
+                                                    <div className="aspect-square">
+                                                        {image ? (
+                                                            <img src={image} alt={title} className="w-full h-full object-contain" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-gray-700 font-black text-3xl italic">BSW</div>
+                                                        )}
+                                                    </div>
+                                                </Link>
+                                                <button
+                                                    type="button"
+                                                    className="absolute top-3 right-3 w-10 h-10 rounded-full bg-black/55 border border-white/10 backdrop-blur flex items-center justify-center icon-btn icon-btn-gradient"
+                                                    onClick={() => {
+                                                        const next = new Set(liked);
+                                                        if (next.has(p.id)) next.delete(p.id);
+                                                        else next.add(p.id);
+                                                        setLiked(next);
+                                                    }}
+                                                    aria-label="Favorito"
+                                                >
+                                                    <FiHeart className={isLiked ? 'text-accent-secondary' : 'text-gray-300'} />
+                                                </button>
+                                            </div>
+
+                                            <div className="mt-3">
+                                                <Link href={route('products.show', p.id)} className="block">
+                                                    <div className="text-sm font-black text-white line-clamp-2 group-hover:text-accent-primary transition-colors">
+                                                        {title}
+                                                    </div>
+                                                </Link>
+                                                <div className="text-xs text-gray-500">por bearssitges</div>
+                                                <div className="mt-1 text-sm font-black text-white">
+                                                    {Number(p.price || 0).toFixed(2).replace('.', ',')} €
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                                {!visibleProducts.length ? <div className="mt-10 text-sm text-gray-500">No hay productos disponibles.</div> : null}
-                            </main>
-                        </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {!visibleProducts.length ? <div className="mt-10 text-sm text-gray-500">No hay productos disponibles.</div> : null}
+                        </main>
                     </div>
                 </div>
             </div>
