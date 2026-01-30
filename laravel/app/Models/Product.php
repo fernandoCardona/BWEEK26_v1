@@ -20,6 +20,8 @@ class Product extends Model
         'price',
         'stock',
         'category',
+        'source',
+        'external_url',
         'is_active',
         'image_path',
     ];

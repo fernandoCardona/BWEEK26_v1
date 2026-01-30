@@ -80,6 +80,10 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
     const flyerInputRef = useRef(null);
     const sponsorInputRef = useRef(null);
 
+    const [serverBannerRemoved, setServerBannerRemoved] = useState(false);
+    const [serverLogoRemoved, setServerLogoRemoved] = useState(false);
+    const [serverFlyerRemoved, setServerFlyerRemoved] = useState(false);
+
     const form = useForm({
         parent_event_id: event?.parent_event_id ?? '',
         name: event?.name ?? '',
@@ -101,6 +105,9 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
     useEffect(() => {
         const start = event?.start_at ? new Date(event.start_at) : null;
         const end = event?.end_at ? new Date(event.end_at) : null;
+        setServerBannerRemoved(false);
+        setServerLogoRemoved(false);
+        setServerFlyerRemoved(false);
         form.setData(() => ({
             parent_event_id: event?.parent_event_id ?? '',
             name: event?.name ?? '',
@@ -188,18 +195,21 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
 
     const bannerPreview = useMemo(() => {
         if (form.data.banner instanceof File) return URL.createObjectURL(form.data.banner);
+        if (serverBannerRemoved) return null;
         return event?.banner_url ?? null;
-    }, [form.data.banner, event?.banner_url]);
+    }, [form.data.banner, event?.banner_url, serverBannerRemoved]);
 
     const logoPreview = useMemo(() => {
         if (form.data.logo instanceof File) return URL.createObjectURL(form.data.logo);
+        if (serverLogoRemoved) return null;
         return event?.logo_url ?? null;
-    }, [form.data.logo, event?.logo_url]);
+    }, [form.data.logo, event?.logo_url, serverLogoRemoved]);
 
     const flyerPreview = useMemo(() => {
         if (form.data.flyer instanceof File) return URL.createObjectURL(form.data.flyer);
+        if (serverFlyerRemoved) return null;
         return event?.flyer_url ?? null;
-    }, [form.data.flyer, event?.flyer_url]);
+    }, [form.data.flyer, event?.flyer_url, serverFlyerRemoved]);
 
     const sponsorPreview = useMemo(() => {
         if (sponsorForm.data.logo instanceof File) return URL.createObjectURL(sponsorForm.data.logo);
@@ -935,7 +945,10 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                         type="file"
                                         accept="image/*"
                                         className="hidden"
-                                        onChange={(e) => form.setData('logo', e.target.files?.[0] ?? null)}
+                                        onChange={(e) => {
+                                            setServerLogoRemoved(false);
+                                            form.setData('logo', e.target.files?.[0] ?? null);
+                                        }}
                                     />
                                     <TicketImageBox
                                         previewUrl={logoPreview}
@@ -943,6 +956,7 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                         onPick={() => logoInputRef.current?.click()}
                                         onDropFile={(f) => form.setData('logo', f)}
                                         onRemove={() => {
+                                            if (logoInputRef.current) logoInputRef.current.value = '';
                                             if (form.data.logo instanceof File) {
                                                 form.setData('logo', null);
                                                 return;
@@ -953,7 +967,16 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                                     message: '¿Seguro que quieres eliminar el logo?',
                                                     confirmLabel: 'Eliminar',
                                                     confirmVariant: 'danger',
-                                                    onConfirm: () => router.delete(route('admin.events.logo.destroy', event.id), { preserveScroll: true, preserveState: true }),
+                                                    onConfirm: () =>
+                                                        router.delete(route('admin.events.logo.destroy', event.id), {
+                                                            preserveScroll: true,
+                                                            preserveState: true,
+                                                            onSuccess: () => {
+                                                                setServerLogoRemoved(true);
+                                                                form.setData('logo', null);
+                                                                if (logoInputRef.current) logoInputRef.current.value = '';
+                                                            },
+                                                        }),
                                                 });
                                             }
                                         }}
@@ -1072,7 +1095,10 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                         type="file"
                                         accept="image/*"
                                         className="hidden"
-                                        onChange={(e) => form.setData('banner', e.target.files?.[0] ?? null)}
+                                        onChange={(e) => {
+                                            setServerBannerRemoved(false);
+                                            form.setData('banner', e.target.files?.[0] ?? null);
+                                        }}
                                     />
                                     <TicketImageBox
                                         previewUrl={bannerPreview}
@@ -1080,6 +1106,7 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                         onPick={() => bannerInputRef.current?.click()}
                                         onDropFile={(f) => form.setData('banner', f)}
                                         onRemove={() => {
+                                            if (bannerInputRef.current) bannerInputRef.current.value = '';
                                             if (form.data.banner instanceof File) {
                                                 form.setData('banner', null);
                                                 return;
@@ -1090,7 +1117,16 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                                     message: '¿Seguro que quieres eliminar el banner?',
                                                     confirmLabel: 'Eliminar',
                                                     confirmVariant: 'danger',
-                                                    onConfirm: () => router.delete(route('admin.events.banner.destroy', event.id), { preserveScroll: true, preserveState: true }),
+                                                    onConfirm: () =>
+                                                        router.delete(route('admin.events.banner.destroy', event.id), {
+                                                            preserveScroll: true,
+                                                            preserveState: true,
+                                                            onSuccess: () => {
+                                                                setServerBannerRemoved(true);
+                                                                form.setData('banner', null);
+                                                                if (bannerInputRef.current) bannerInputRef.current.value = '';
+                                                            },
+                                                        }),
                                                 });
                                             }
                                         }}
@@ -1104,7 +1140,10 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                         type="file"
                                         accept="image/*"
                                         className="hidden"
-                                        onChange={(e) => form.setData('flyer', e.target.files?.[0] ?? null)}
+                                        onChange={(e) => {
+                                            setServerFlyerRemoved(false);
+                                            form.setData('flyer', e.target.files?.[0] ?? null);
+                                        }}
                                     />
                                     <TicketImageBox
                                         previewUrl={flyerPreview}
@@ -1112,6 +1151,7 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                         onPick={() => flyerInputRef.current?.click()}
                                         onDropFile={(f) => form.setData('flyer', f)}
                                         onRemove={() => {
+                                            if (flyerInputRef.current) flyerInputRef.current.value = '';
                                             if (form.data.flyer instanceof File) {
                                                 form.setData('flyer', null);
                                                 return;
@@ -1122,7 +1162,16 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                                     message: '¿Seguro que quieres eliminar el flyer?',
                                                     confirmLabel: 'Eliminar',
                                                     confirmVariant: 'danger',
-                                                    onConfirm: () => router.delete(route('admin.events.flyer.destroy', event.id), { preserveScroll: true, preserveState: true }),
+                                                    onConfirm: () =>
+                                                        router.delete(route('admin.events.flyer.destroy', event.id), {
+                                                            preserveScroll: true,
+                                                            preserveState: true,
+                                                            onSuccess: () => {
+                                                                setServerFlyerRemoved(true);
+                                                                form.setData('flyer', null);
+                                                                if (flyerInputRef.current) flyerInputRef.current.value = '';
+                                                            },
+                                                        }),
                                                 });
                                             }
                                         }}
@@ -1139,7 +1188,10 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                         type="file"
                                         accept="image/*"
                                         className="hidden"
-                                        onChange={(e) => form.setData('flyer', e.target.files?.[0] ?? null)}
+                                        onChange={(e) => {
+                                            setServerFlyerRemoved(false);
+                                            form.setData('flyer', e.target.files?.[0] ?? null);
+                                        }}
                                     />
                                     <TicketImageBox
                                         previewUrl={flyerPreview}
@@ -1147,6 +1199,7 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                         onPick={() => flyerInputRef.current?.click()}
                                         onDropFile={(f) => form.setData('flyer', f)}
                                         onRemove={() => {
+                                            if (flyerInputRef.current) flyerInputRef.current.value = '';
                                             if (form.data.flyer instanceof File) {
                                                 form.setData('flyer', null);
                                                 return;
@@ -1157,7 +1210,16 @@ export default function Edit({ event, parents, defaults, can, agenda, ticketTemp
                                                     message: '¿Seguro que quieres eliminar el flyer?',
                                                     confirmLabel: 'Eliminar',
                                                     confirmVariant: 'danger',
-                                                    onConfirm: () => router.delete(route('admin.events.flyer.destroy', event.id), { preserveScroll: true, preserveState: true }),
+                                                    onConfirm: () =>
+                                                        router.delete(route('admin.events.flyer.destroy', event.id), {
+                                                            preserveScroll: true,
+                                                            preserveState: true,
+                                                            onSuccess: () => {
+                                                                setServerFlyerRemoved(true);
+                                                                form.setData('flyer', null);
+                                                                if (flyerInputRef.current) flyerInputRef.current.value = '';
+                                                            },
+                                                        }),
                                                 });
                                             }
                                         }}
@@ -2228,7 +2290,7 @@ function TicketImageBox({ previewUrl, onPick, onRemove, onDropFile, size = 'md',
     const sizeClass = size === 'sm' ? 'w-20 h-20' : 'w-28 h-28';
     const defaultBoxClass = variant === 'banner' ? 'w-full aspect-[16/7] rounded-3xl' : variant === 'rect' ? 'w-28 h-20 rounded-2xl' : `${sizeClass} rounded-2xl`;
     const effectiveBoxClass = boxClass || defaultBoxClass;
-    const imgClass = variant === 'banner' || variant === 'rect' ? 'w-full h-full object-cover' : 'w-full h-full object-contain';
+    const imgClass = variant === 'banner' ? 'w-full h-full object-contain' : variant === 'rect' ? 'w-full h-full object-cover' : 'w-full h-full object-contain';
     return (
         <div
             className={`relative ${effectiveBoxClass} border border-white/10 bg-black/30 overflow-hidden flex items-center justify-center cursor-pointer group ${
