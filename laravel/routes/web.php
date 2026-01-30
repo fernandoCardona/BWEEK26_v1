@@ -68,6 +68,7 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/tickets', [TicketController::class, 'catalog'])->name('tickets.index');
+Route::middleware('signed')->get('/tickets/scan/{ticket}', [\App\Http\Controllers\TicketScanController::class, 'show'])->name('tickets.scan');
 
 Route::middleware('auth')->group(function () {
     Route::get('/cart', [CartController::class, 'page'])->name('cart.index');
@@ -79,6 +80,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/checkout/stripe', [CheckoutController::class, 'createStripeCheckout'])->name('checkout.stripe');
     Route::post('/checkout/paypal', [CheckoutController::class, 'createPaypalCheckout'])->name('checkout.paypal');
     Route::get('/checkout/paypal/return', [CheckoutController::class, 'paypalReturn'])->name('checkout.paypal.return');
+    Route::get('/checkout/return', [\App\Http\Controllers\CheckoutReturnController::class, 'index'])->name('checkout.return');
+    Route::get('/api/order/{transaction}/status', [\App\Http\Controllers\OrderStatusController::class, 'show'])->name('order.status');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -193,7 +196,5 @@ Route::get('/{slug}', [PageController::class, 'show'])
 
 require __DIR__ . '/auth.php';
 
-Route::post('/webhooks/stripe', [CheckoutController::class, 'stripeWebhook'])->name('webhooks.stripe');
-Route::get('/checkout/success', function (\Illuminate\Http\Request $request) {
-    return view('checkout-success', ['session_id' => $request->get('session_id')]);
-})->name('checkout.success');
+Route::post('/webhooks/stripe', [\App\Http\Controllers\PaymentWebhookController::class, 'stripe'])->name('webhooks.stripe');
+Route::post('/webhooks/paypal', [\App\Http\Controllers\PaymentWebhookController::class, 'paypal'])->name('webhooks.paypal');

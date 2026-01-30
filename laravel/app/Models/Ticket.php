@@ -19,11 +19,13 @@ class Ticket extends Model
         'user_id',
         'transaction_id',
         'qr_code',
+        'validation_hash',
         'ticket_type',
         'price',
         'status',
         'purchased_at',
         'validated_at',
+        'scanned_at',
     ];
 
     protected $casts = [
@@ -31,6 +33,7 @@ class Ticket extends Model
         'price' => 'decimal:2',
         'purchased_at' => 'datetime',
         'validated_at' => 'datetime',
+        'scanned_at' => 'datetime',
     ];
 
     protected static function boot()

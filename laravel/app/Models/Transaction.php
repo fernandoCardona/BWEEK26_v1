@@ -14,6 +14,8 @@ class Transaction extends Model
         'id',
         'user_id',
         'type',
+        'provider',
+        'external_id',
         'status',
         'currency',
         'total_amount',

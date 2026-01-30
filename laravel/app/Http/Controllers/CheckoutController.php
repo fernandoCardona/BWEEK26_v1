@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
 use App\Services\BillingService;
+use App\Services\OrderFulfillmentService;
+use App\Services\StockReservationService;
 use App\Mail\InvoiceMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
@@ -171,6 +173,7 @@ class CheckoutController extends Controller
         $tx = Transaction::create([
             'user_id' => $user->id,
             'type' => 'merch',
+            'provider' => 'stripe',
             'status' => 'pending',
             'currency' => $cart->currency ?? 'EUR',
             'total_amount' => round($total, 2),
@@ -187,13 +190,20 @@ class CheckoutController extends Controller
         } catch (\Throwable $e) {
         }
 
+        try {
+            app(StockReservationService::class)->reserveTickets($tx, $items);
+        } catch (\Throwable $e) {
+            $tx->delete();
+            throw $e;
+        }
+
         $secret = Config::get('services.stripe.secret') ?? env('STRIPE_SECRET');
         $publicKey = Config::get('services.stripe.key') ?? env('STRIPE_KEY');
         if (!$secret || !$publicKey) {
             abort(500, 'Stripe no configurado');
         }
 
-        $successUrl = url('/checkout/success') . '?session_id={CHECKOUT_SESSION_ID}';
+        $successUrl = url('/checkout/return') . '?order_id=' . $tx->id . '&session_id={CHECKOUT_SESSION_ID}';
         $cancelUrl = url('/cart');
 
         $payload = [
@@ -213,11 +223,21 @@ class CheckoutController extends Controller
             ->post('https://api.stripe.com/v1/checkout/sessions', $this->flattenPayload($payload));
 
         if (!$resp->successful()) {
+            try {
+                app(StockReservationService::class)->releaseTickets($tx);
+            } catch (\Throwable $e) {
+            }
             $tx->update(['status' => 'failed', 'meta' => array_merge($tx->meta ?? [], ['error' => $resp->json()])]);
             abort(502, 'Error creando sesión de pago');
         }
 
         $session = $resp->json();
+        $tx->update([
+            'external_id' => $session['id'] ?? null,
+            'meta' => array_merge($tx->meta ?? [], [
+                'stripe_session_id' => $session['id'] ?? null,
+            ]),
+        ]);
         return response()->json([
             'session_id' => $session['id'] ?? null,
             'url' => $session['url'] ?? null,
@@ -333,6 +353,7 @@ class CheckoutController extends Controller
         $tx = Transaction::create([
             'user_id' => $user->id,
             'type' => 'merch',
+            'provider' => 'paypal',
             'status' => 'pending',
             'currency' => $cart->currency ?? 'EUR',
             'total_amount' => round($total, 2),
@@ -347,6 +368,13 @@ class CheckoutController extends Controller
         try {
             app(BillingService::class)->ensureProformaForTransaction($tx, (array) ($tx->meta['lines_snapshot'] ?? []));
         } catch (\Throwable $e) {
+        }
+
+        try {
+            app(StockReservationService::class)->reserveTickets($tx, $items);
+        } catch (\Throwable $e) {
+            $tx->delete();
+            throw $e;
         }
 
         $accessToken = $this->paypalAccessToken();
@@ -375,12 +403,19 @@ class CheckoutController extends Controller
             ]);
 
         if (!$orderResp->successful()) {
+            try {
+                app(StockReservationService::class)->releaseTickets($tx);
+            } catch (\Throwable $e) {
+            }
             $tx->update(['status' => 'failed', 'meta' => array_merge($tx->meta ?? [], ['error' => $orderResp->json()])]);
             abort(502, 'Error creando orden PayPal');
         }
 
         $order = $orderResp->json();
-        $tx->update(['meta' => array_merge($tx->meta ?? [], ['paypal_order_id' => $order['id'] ?? null])]);
+        $tx->update([
+            'external_id' => $order['id'] ?? null,
+            'meta' => array_merge($tx->meta ?? [], ['paypal_order_id' => $order['id'] ?? null]),
+        ]);
 
         $approveUrl = null;
         foreach (($order['links'] ?? []) as $link) {
@@ -416,8 +451,12 @@ class CheckoutController extends Controller
             ->post("{$baseUrl}/v2/checkout/orders/{$token}/capture", []);
 
         if (!$captureResp->successful()) {
+            try {
+                app(StockReservationService::class)->releaseTickets($tx);
+            } catch (\Throwable $e) {
+            }
             $tx->update(['status' => 'failed', 'meta' => array_merge($tx->meta ?? [], ['paypal_capture_error' => $captureResp->json()])]);
-            return redirect('/cart');
+            return redirect('/checkout/return?order_id=' . $tx->id);
         }
 
         $capture = $captureResp->json();
@@ -425,10 +464,10 @@ class CheckoutController extends Controller
         $tx->update(['meta' => array_merge($tx->meta ?? [], ['paypal_capture' => $capture, 'paypal_status' => $status])]);
 
         if ($status === 'COMPLETED') {
-            $this->fulfillOrder($tx->id);
+            app(OrderFulfillmentService::class)->fulfill($tx->id);
         }
 
-        return redirect('/cart');
+        return redirect('/checkout/return?order_id=' . $tx->id);
     }
 
     public function stripeWebhook(Request $request)
@@ -449,131 +488,11 @@ class CheckoutController extends Controller
             $session = $event['data']['object'] ?? [];
             $orderId = $session['metadata']['order_id'] ?? null;
             if ($orderId) {
-                $this->fulfillOrder($orderId);
+                app(OrderFulfillmentService::class)->fulfill($orderId);
             }
         }
 
         return response()->json(['received' => true]);
-    }
-
-    private function fulfillOrder(string $orderId): void
-    {
-        DB::transaction(function () use ($orderId) {
-            $tx = Transaction::query()->where('id', $orderId)->lockForUpdate()->first();
-            if (!$tx || $tx->status === 'completed') {
-                return;
-            }
-            $userId = $tx->user_id;
-            $cartId = $tx->meta['cart_id'] ?? null;
-            if (!$cartId) {
-                $tx->update(['status' => 'failed', 'meta' => array_merge($tx->meta ?? [], ['error' => 'missing_cart'])]);
-                return;
-            }
-            $items = CartItem::query()->where('cart_id', $cartId)->get();
-            $productIds = $items->where('kind', 'product')->pluck('product_id')->unique()->values();
-            $ticketTypeIds = $items->where('kind', 'ticket')->pluck('event_ticket_type_id')->unique()->values();
-            $products = Product::query()->whereIn('id', $productIds)->lockForUpdate()->get()->keyBy('id');
-            $variantIds = $items->where('kind', 'product')->pluck('product_variant_id')->filter()->unique()->values();
-            $variants = \App\Models\ProductVariant::query()->whereIn('id', $variantIds)->lockForUpdate()->get()->keyBy('id');
-            $ticketTypes = \App\Models\EventTicketType::query()->whereIn('id', $ticketTypeIds)->lockForUpdate()->get()->keyBy('id');
-            $events = \App\Models\Event::query()->whereIn('id', $ticketTypes->pluck('event_id')->unique())->get()->keyBy('id');
-            foreach ($items as $item) {
-                if ($item->kind === 'product') {
-                    if ($item->product_variant_id) {
-                        $v = $variants->get($item->product_variant_id);
-                        $p = $v ? $products->get($v->product_id) : null;
-                        if (!$v || !$p || !$v->is_active || !$p->is_active) {
-                            continue;
-                        }
-                        $qty = (int) $item->quantity;
-                        if ($v->stock < $qty) {
-                            continue;
-                        }
-                        $v->decrement('stock', $qty);
-                        $v->refresh();
-                        if ((int) $v->stock <= 0) {
-                            $v->is_active = false;
-                            $v->save();
-                        }
-                        $this->recalculateProductFromVariants($p);
-                        TransactionItem::create([
-                            'transaction_id' => $tx->id,
-                            'kind' => 'product',
-                            'product_id' => $p->id,
-                            'title' => ($p->getTranslation('name', app()->getLocale()) ?? null) . ' • ' . ($v->size ?? '') . ($v->color ? " • {$v->color}" : ''),
-                            'quantity' => $qty,
-                            'unit_price' => (float) $v->price,
-                            'total_price' => round(((float) $v->price) * $qty, 2),
-                            'meta' => [
-                                'product_variant_id' => $v->id,
-                            ],
-                        ]);
-                    } else {
-                        $p = $products->get($item->product_id);
-                        if (!$p || !$p->is_active) {
-                            continue;
-                        }
-                        $qty = (int) $item->quantity;
-                        if ($p->stock < $qty) {
-                            continue;
-                        }
-                        $p->decrement('stock', $qty);
-                        TransactionItem::create([
-                            'transaction_id' => $tx->id,
-                            'kind' => 'product',
-                            'product_id' => $p->id,
-                            'title' => $p->getTranslation('name', app()->getLocale()) ?? null,
-                            'quantity' => $qty,
-                            'unit_price' => (float) $p->price,
-                            'total_price' => round(((float) $p->price) * $qty, 2),
-                        ]);
-                    }
-                } else {
-                    $type = $ticketTypes->get($item->event_ticket_type_id);
-                    $ev = $type ? $events->get($type->event_id) : null;
-                    if (!$type || !$ev) {
-                        continue;
-                    }
-                    $qty = (int) $item->quantity;
-                    if ($type->stock < $qty) {
-                        continue;
-                    }
-                    $type->decrement('stock', $qty);
-                    if ((int) $type->stock <= 0) {
-                        $type->is_active = false;
-                        $type->save();
-                    }
-                    for ($i = 0; $i < $qty; $i++) {
-                        $ticket = app(\App\Services\TicketingService::class)->issueTicket($tx->user, $ev, $type->code, (float) $type->price, $type->id);
-                        $ticket->update(['transaction_id' => $tx->id]);
-                        TransactionItem::create([
-                            'transaction_id' => $tx->id,
-                            'kind' => 'ticket',
-                            'ticket_id' => $ticket->id,
-                            'title' => strtoupper($type->code),
-                            'quantity' => 1,
-                            'unit_price' => (float) $type->price,
-                            'total_price' => (float) $type->price,
-                            'meta' => [
-                                'event_id' => $ev->id,
-                                'ticket_type_id' => $type->id,
-                            ],
-                        ]);
-                    }
-                }
-            }
-            CartItem::query()->where('cart_id', $cartId)->delete();
-            $tx->update(['status' => 'completed']);
-            try {
-                app(BillingService::class)->issueInvoiceForTransaction($tx);
-            } catch (\Throwable $e) {
-            }
-
-            try {
-                \Illuminate\Support\Facades\Mail::to($tx->user)->send(new InvoiceMail($tx->id));
-            } catch (\Throwable $e) {
-            }
-        });
     }
 
     private function paypalBaseUrl(): string

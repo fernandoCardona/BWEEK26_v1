@@ -82,6 +82,18 @@ export default function Index({ cart: initialCart }) {
 
     return (
         <Layout>
+            {processing ? (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+                    <div className="glass-card max-w-md w-full p-6 border border-white/10 bg-white/10 shadow-2xl shadow-black/60 text-center">
+                        <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold">Procesando</div>
+                        <div className="text-xl font-black mt-2">Redirigiendo a la pasarela…</div>
+                        <div className="text-sm text-gray-400 mt-2">No cierres esta ventana.</div>
+                        <div className="mt-6 flex justify-center">
+                            <div className="w-10 h-10 rounded-full border-4 border-white/20 border-t-white/80 animate-spin" />
+                        </div>
+                    </div>
+                </div>
+            ) : null}
             <div className="pt-32 pb-20 px-6">
                 <div className="container mx-auto max-w-4xl">
                     <div className="flex items-start justify-between gap-4 mb-8">
