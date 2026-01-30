@@ -40,7 +40,15 @@ class OrderFulfillmentService
                 return;
             }
 
-            $reservedTickets = is_array($tx->meta['reserved_tickets'] ?? null) ? $tx->meta['reserved_tickets'] : [];
+            $reservedTickets = (is_array($tx->meta['reserved_tickets'] ?? null) && !($tx->meta['reserved_tickets_released'] ?? false))
+                ? $tx->meta['reserved_tickets']
+                : [];
+            $reservedVariants = (is_array($tx->meta['reserved_variants'] ?? null) && !($tx->meta['reserved_variants_released'] ?? false))
+                ? $tx->meta['reserved_variants']
+                : [];
+            $reservedProducts = (is_array($tx->meta['reserved_products'] ?? null) && !($tx->meta['reserved_products_released'] ?? false))
+                ? $tx->meta['reserved_products']
+                : [];
 
             $cartId = $tx->meta['cart_id'] ?? null;
             if (!$cartId) {
@@ -63,20 +71,23 @@ class OrderFulfillmentService
                     if ($item->product_variant_id) {
                         $v = $variants->get($item->product_variant_id);
                         $p = $v ? $products->get($v->product_id) : null;
-                        if (!$v || !$p || !$v->is_active || !$p->is_active) {
-                            continue;
-                        }
                         $qty = (int) $item->quantity;
-                        if ($v->stock < $qty) {
+                        $isReservedVariant = $v ? $this->isVariantReserved($reservedVariants, $v->id, $qty) : false;
+                        if (!$v || !$p || !$p->is_active || (!$isReservedVariant && !$v->is_active)) {
                             continue;
                         }
-                        $v->decrement('stock', $qty);
-                        $v->refresh();
-                        if ((int) $v->stock <= 0) {
-                            $v->is_active = false;
-                            $v->save();
+                        if (!$isReservedVariant) {
+                            if ($v->stock < $qty) {
+                                continue;
+                            }
+                            $v->decrement('stock', $qty);
+                            $v->refresh();
+                            if ((int) $v->stock <= 0) {
+                                $v->is_active = false;
+                                $v->save();
+                            }
+                            $this->recalculateProductFromVariants($p);
                         }
-                        $this->recalculateProductFromVariants($p);
 
                         TransactionItem::create([
                             'transaction_id' => $tx->id,
@@ -96,10 +107,13 @@ class OrderFulfillmentService
                             continue;
                         }
                         $qty = (int) $item->quantity;
-                        if ($p->stock < $qty) {
-                            continue;
+                        $isReservedProduct = $this->isProductReserved($reservedProducts, $p->id, $qty);
+                        if (!$isReservedProduct) {
+                            if ($p->stock < $qty) {
+                                continue;
+                            }
+                            $p->decrement('stock', $qty);
                         }
-                        $p->decrement('stock', $qty);
 
                         TransactionItem::create([
                             'transaction_id' => $tx->id,
@@ -169,6 +183,24 @@ class OrderFulfillmentService
     {
         foreach ($reservedTickets as $r) {
             if ((string) ($r['event_ticket_type_id'] ?? '') !== $ticketTypeId) continue;
+            return (int) ($r['quantity'] ?? 0) >= $qty;
+        }
+        return false;
+    }
+
+    private function isVariantReserved(array $reservedVariants, string $variantId, int $qty): bool
+    {
+        foreach ($reservedVariants as $r) {
+            if ((string) ($r['product_variant_id'] ?? '') !== $variantId) continue;
+            return (int) ($r['quantity'] ?? 0) >= $qty;
+        }
+        return false;
+    }
+
+    private function isProductReserved(array $reservedProducts, string $productId, int $qty): bool
+    {
+        foreach ($reservedProducts as $r) {
+            if ((string) ($r['product_id'] ?? '') !== $productId) continue;
             return (int) ($r['quantity'] ?? 0) >= $qty;
         }
         return false;

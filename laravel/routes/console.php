@@ -4,6 +4,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schedule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -841,3 +842,5 @@ Artisan::command('bweek:import-events-csv {path}', function (string $path) {
     }
     return 0;
 })->purpose('Importar CSV de eventos/días/subeventos/tickets (solo upsert, nunca borra)');
+
+Schedule::command('payments:expire-pending')->everyMinute()->withoutOverlapping();

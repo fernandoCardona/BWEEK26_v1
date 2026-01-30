@@ -191,7 +191,7 @@ class CheckoutController extends Controller
         }
 
         try {
-            app(StockReservationService::class)->reserveTickets($tx, $items);
+            app(StockReservationService::class)->reserveStock($tx, $items);
         } catch (\Throwable $e) {
             $tx->delete();
             throw $e;
@@ -224,7 +224,7 @@ class CheckoutController extends Controller
 
         if (!$resp->successful()) {
             try {
-                app(StockReservationService::class)->releaseTickets($tx);
+                app(StockReservationService::class)->releaseStock($tx);
             } catch (\Throwable $e) {
             }
             $tx->update(['status' => 'failed', 'meta' => array_merge($tx->meta ?? [], ['error' => $resp->json()])]);
@@ -371,7 +371,7 @@ class CheckoutController extends Controller
         }
 
         try {
-            app(StockReservationService::class)->reserveTickets($tx, $items);
+            app(StockReservationService::class)->reserveStock($tx, $items);
         } catch (\Throwable $e) {
             $tx->delete();
             throw $e;
@@ -404,7 +404,7 @@ class CheckoutController extends Controller
 
         if (!$orderResp->successful()) {
             try {
-                app(StockReservationService::class)->releaseTickets($tx);
+                app(StockReservationService::class)->releaseStock($tx);
             } catch (\Throwable $e) {
             }
             $tx->update(['status' => 'failed', 'meta' => array_merge($tx->meta ?? [], ['error' => $orderResp->json()])]);
@@ -452,7 +452,7 @@ class CheckoutController extends Controller
 
         if (!$captureResp->successful()) {
             try {
-                app(StockReservationService::class)->releaseTickets($tx);
+                app(StockReservationService::class)->releaseStock($tx);
             } catch (\Throwable $e) {
             }
             $tx->update(['status' => 'failed', 'meta' => array_merge($tx->meta ?? [], ['paypal_capture_error' => $captureResp->json()])]);

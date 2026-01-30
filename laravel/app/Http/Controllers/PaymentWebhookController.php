@@ -221,7 +221,7 @@ class PaymentWebhookController extends Controller
             ]);
 
             try {
-                app(StockReservationService::class)->releaseTickets($tx);
+                app(StockReservationService::class)->releaseStock($tx);
             } catch (\Throwable $e) {
             }
         });
