@@ -45,5 +45,9 @@ class Transaction extends Model
     {
         return $this->hasMany(TransactionItem::class);
     }
-}
 
+    public function billingDocument()
+    {
+        return $this->hasOne(BillingDocument::class);
+    }
+}

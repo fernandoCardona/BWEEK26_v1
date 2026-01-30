@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Event;
 use App\Models\Ticket;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Support\Str;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
@@ -35,7 +36,8 @@ class TicketingService
      */
     public function validateTicket(string $code): array
     {
-        $ticket = Ticket::where('qr_code', $code)->first();
+        $normalized = $this->extractTicketCode($code);
+        $ticket = Ticket::where('qr_code', $normalized)->first();
 
         if (!$ticket) {
             return ['valid' => false, 'message' => 'Ticket not found'];
@@ -65,6 +67,35 @@ class TicketingService
         return base64_encode(QrCode::format('png')->size(300)->generate($code));
     }
 
+    public function buildTicketQrPayload(Ticket $ticket, ?Transaction $tx = null): string
+    {
+        $ticket->loadMissing(['event.parent', 'user']);
+        $txId = $tx ? (string) $tx->id : (string) ($ticket->transaction_id ?? '');
+        $txCreated = $tx ? optional($tx->created_at)->toISOString() : null;
+        $eventName = $ticket->event ? ($ticket->event->name['es'] ?? $ticket->event->name['en'] ?? null) : null;
+        $parentName = ($ticket->event && $ticket->event->parent) ? ($ticket->event->parent->name['es'] ?? $ticket->event->parent->name['en'] ?? null) : null;
+
+        $payload = [
+            'type' => 'bears_ticket',
+            'qr_code' => (string) $ticket->qr_code,
+            'ticket_uuid' => (string) $ticket->id,
+            'transaction_uuid' => $txId,
+            'transaction_date' => $txCreated,
+            'event' => [
+                'event_uuid' => (string) ($ticket->event_id ?? ''),
+                'name' => $eventName,
+                'parent_name' => $parentName,
+            ],
+            'user' => [
+                'name' => (string) ($ticket->user?->name ?? ''),
+                'email' => (string) ($ticket->user?->email ?? ''),
+                'phone' => (string) ($ticket->user?->phone ?? ''),
+            ],
+        ];
+
+        return json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     private function generateUniqueCode(): string
     {
         do {
@@ -72,5 +103,23 @@ class TicketingService
         } while (Ticket::where('qr_code', $code)->exists());
 
         return $code;
+    }
+
+    private function extractTicketCode(string $raw): string
+    {
+        $trimmed = trim($raw);
+        if ($trimmed === '') return $trimmed;
+
+        if ($trimmed[0] === '{' || $trimmed[0] === '[') {
+            $decoded = json_decode($trimmed, true);
+            if (is_array($decoded)) {
+                $candidate = $decoded['qr_code'] ?? $decoded['code'] ?? null;
+                if (is_string($candidate) && $candidate !== '') {
+                    return $candidate;
+                }
+            }
+        }
+
+        return $trimmed;
     }
 }

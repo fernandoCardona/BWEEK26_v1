@@ -18,6 +18,7 @@ class StoreController extends Controller
             ->with([
                 'items.product:id,name,price',
                 'items.ticket.event:id,name,event_date',
+                'billingDocument',
             ])
             ->where('user_id', $user->id)
             ->orderByDesc('created_at')
@@ -31,6 +32,23 @@ class StoreController extends Controller
                     'currency' => $tx->currency,
                     'total_amount' => (string) $tx->total_amount,
                     'created_at' => optional($tx->created_at)->toISOString(),
+                    'billing_document' => $tx->billingDocument ? [
+                        'id' => $tx->billingDocument->id,
+                        'kind' => $tx->billingDocument->kind,
+                        'series' => $tx->billingDocument->series,
+                        'year' => (int) $tx->billingDocument->year,
+                        'sequence' => (int) $tx->billingDocument->sequence,
+                        'number' => $tx->billingDocument->number,
+                        'issued_at' => optional($tx->billingDocument->issued_at)->toISOString(),
+                        'currency' => $tx->billingDocument->currency,
+                        'vat_rate' => (string) $tx->billingDocument->vat_rate,
+                        'subtotal_amount' => (string) $tx->billingDocument->subtotal_amount,
+                        'vat_amount' => (string) $tx->billingDocument->vat_amount,
+                        'total_amount' => (string) $tx->billingDocument->total_amount,
+                        'issuer' => $tx->billingDocument->issuer,
+                        'recipient' => $tx->billingDocument->recipient,
+                        'lines' => $tx->billingDocument->lines,
+                    ] : null,
                     'items' => $tx->items->map(function ($item) {
                         return [
                             'id' => $item->id,

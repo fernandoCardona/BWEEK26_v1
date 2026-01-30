@@ -5,6 +5,7 @@ import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 import { formatDMY, formatTimeHM } from '@/utils/date';
 import ImagePickerBox from '@/Components/ImagePickerBox';
 import SwitchToggle from '@/Components/SwitchToggle';
+import { FiTrash2 } from 'react-icons/fi';
 
 export default function Index({ users, filters, selectedUser, selectedTickets, selectedTransactions, selectedCart, selectedStats, can }) {
     const { props } = usePage();
@@ -60,6 +61,19 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
         const hasTicket = items.some((it) => it?.kind === 'ticket' || !!it?.ticket);
         const ticketHint = hasTicket ? ' + ticket' : '';
         return `${firstTitle}${extra}${ticketHint}`;
+    };
+
+    const canDeleteFailedTx = ['admin', 'super_admin', 'super_user'].includes(String(authRole || '').toLowerCase());
+    const deleteFailedTx = (txId) => {
+        if (!selectedUser?.id) return;
+        router.delete(route('admin.transactions.destroy', txId), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setOpenTxId(null);
+                const target = route('admin.users.show', selectedUser.id, filters?.q ? { q: filters.q } : {});
+                router.get(target, {}, { preserveScroll: true, preserveState: true, replace: true });
+            },
+        });
     };
 
     const profileForm = useForm({
@@ -430,9 +444,24 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                                                         </p>
                                                         <p className="text-xs text-gray-400 truncate mt-1">{txSummary(t)}</p>
                                                     </div>
-                                                    <div className="text-right shrink-0">
-                                                        <p className="text-sm font-black">{t.total_amount}€</p>
-                                                        <p className={`text-[10px] uppercase tracking-widest font-black ${statusMeta(t.status).cls}`}>{statusMeta(t.status).label}</p>
+                                                    <div className="shrink-0 flex items-center gap-3">
+                                                        <div className="text-right">
+                                                            <p className="text-sm font-black">{t.total_amount}€</p>
+                                                            <p className={`text-[10px] uppercase tracking-widest font-black ${statusMeta(t.status).cls}`}>{statusMeta(t.status).label}</p>
+                                                        </div>
+                                                        {canDeleteFailedTx && String(t.status || '').toLowerCase() === 'failed' ? (
+                                                            <button
+                                                                type="button"
+                                                                className="btn-secondary px-3 py-3 text-sm"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    deleteFailedTx(t.id);
+                                                                }}
+                                                                aria-label="Borrar transacción failed"
+                                                            >
+                                                                <FiTrash2 />
+                                                            </button>
+                                                        ) : null}
                                                     </div>
                                                 </div>
                                             </button>
@@ -479,25 +508,46 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
                         onClick={(e) => e.stopPropagation()}
                     >
                         {(() => {
-                            const items = openTx.items ?? [];
-                            const subtotal = items.reduce((sum, it) => sum + Number(it.total_price || 0), 0);
-                            const total = Number(openTx.total_amount || 0);
-                            const taxes = Math.max(0, Number((total - subtotal).toFixed(2)));
-                            const success = isSuccessStatus(openTx.status);
-                            const docTitle = success ? 'INVOICE' : 'PRO FORMA INVOICE';
+                            const doc = openTx.billing_document ?? null;
+                            const isInvoice = doc?.kind === 'invoice';
+                            const issuer = doc?.issuer ?? {};
+                            const recipient = doc?.recipient ?? {};
+                            const vatRate = Number(doc?.vat_rate ?? 21);
+                            const fallbackLines = (openTx.items ?? []).map((it) => {
+                                const qty = Number(it.quantity || 0);
+                                const total = Number(it.total_price || 0);
+                                const rate = vatRate / 100;
+                                const base = rate > 0 ? total / (1 + rate) : total;
+                                const vat = total - base;
+                                return {
+                                    id: it.id,
+                                    description: it.title || 'Item',
+                                    quantity: qty,
+                                    unit_price: Number(it.unit_price || 0),
+                                    total,
+                                    vat_rate: vatRate,
+                                    base: Number(base.toFixed(2)),
+                                    vat: Number(vat.toFixed(2)),
+                                };
+                            });
+                            const lines = doc?.lines ?? fallbackLines;
+                            const baseAmount = Number(doc?.subtotal_amount ?? fallbackLines.reduce((sum, l) => sum + Number(l.base || 0), 0) ?? 0);
+                            const vatAmount = Number(doc?.vat_amount ?? fallbackLines.reduce((sum, l) => sum + Number(l.vat || 0), 0) ?? 0);
+                            const totalAmount = Number(doc?.total_amount ?? openTx.total_amount ?? fallbackLines.reduce((sum, l) => sum + Number(l.total || 0), 0) ?? 0);
+                            const number = doc?.number ?? `PF-${String(openTx.created_at || '').slice(0, 4) || '0000'}-${String(openTx.id || '').slice(0, 6).toUpperCase()}`;
                             const note =
                                 String(openTx.status || '').toLowerCase() === 'failed'
-                                    ? 'Pago fallido. Documento provisional (pro forma) sin validez de factura.'
+                                    ? 'Pago fallido. Documento provisional (proforma) sin validez de factura.'
                                     : String(openTx.status || '').toLowerCase() === 'pending'
-                                      ? 'Pago pendiente. Documento provisional (pro forma) hasta confirmación.'
-                                      : success
+                                      ? 'Pago pendiente. Documento provisional (proforma) hasta confirmación.'
+                                      : isInvoice
                                         ? 'Factura emitida para esta compra.'
                                         : 'Documento provisional.';
                             return (
                                 <>
                                     <div className="flex items-start justify-between gap-4">
                                         <div className="min-w-0">
-                                            <div className="text-[11px] text-gray-500 uppercase tracking-widest font-bold">{docTitle}</div>
+                                            <div className="text-[11px] text-gray-500 uppercase tracking-widest font-bold">{isInvoice ? 'FACTURA' : 'FACTURA PROFORMA'}</div>
                                             <h3 className="text-2xl font-black tracking-tight truncate mt-1">
                                                 {openTx.type === 'ticket' ? 'Tickets' : openTx.type === 'merch' ? 'Merchandising' : 'Transacción'}
                                             </h3>
@@ -513,64 +563,80 @@ export default function Index({ users, filters, selectedUser, selectedTickets, s
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                                         <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">Bill To</div>
-                                            <div className="text-sm font-black">{selectedUser?.name || '—'} {selectedUser?.last_name || ''}</div>
-                                            <div className="text-xs text-gray-400 mt-1">{selectedUser?.email || '—'}</div>
-                                            {selectedUser?.address_line1 ? <div className="text-xs text-gray-400 mt-2">{selectedUser.address_line1}</div> : null}
-                                            {selectedUser?.address_line2 ? <div className="text-xs text-gray-400">{selectedUser.address_line2}</div> : null}
-                                            {(selectedUser?.postal_code || selectedUser?.city || selectedUser?.country) ? (
-                                                <div className="text-xs text-gray-400">
-                                                    {[selectedUser?.postal_code, selectedUser?.city, selectedUser?.country].filter(Boolean).join(' • ')}
-                                                </div>
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">Emisor</div>
+                                            <div className="text-sm font-black">{issuer?.name || '—'}</div>
+                                            {issuer?.tax_id ? <div className="text-xs text-gray-400 mt-1">NIF/CIF: {issuer.tax_id}</div> : null}
+                                            {issuer?.address_line1 ? <div className="text-xs text-gray-400 mt-2">{issuer.address_line1}</div> : null}
+                                            {issuer?.address_line2 ? <div className="text-xs text-gray-400">{issuer.address_line2}</div> : null}
+                                            {[issuer?.postal_code, issuer?.city, issuer?.province, issuer?.country].filter(Boolean).length ? (
+                                                <div className="text-xs text-gray-400">{[issuer?.postal_code, issuer?.city, issuer?.province, issuer?.country].filter(Boolean).join(' • ')}</div>
                                             ) : null}
                                         </div>
                                         <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
-                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">Details</div>
-                                            <div className="text-xs text-gray-400">Invoice #: <span className="font-black text-gray-200">{openTx.id}</span></div>
-                                            <div className="text-xs text-gray-400 mt-1">Currency: <span className="font-black text-gray-200">{(openTx.currency || 'EUR').toUpperCase()}</span></div>
-                                            <div className="text-xs text-gray-400 mt-1">Items: <span className="font-black text-gray-200">{items.length}</span></div>
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">Cliente</div>
+                                            <div className="text-sm font-black">{recipient?.name || `${selectedUser?.name || '—'} ${selectedUser?.last_name || ''}`}</div>
+                                            <div className="text-xs text-gray-400 mt-1">{recipient?.email || selectedUser?.email || '—'}</div>
+                                            {recipient?.phone || selectedUser?.phone ? <div className="text-xs text-gray-400 mt-1">{recipient?.phone || selectedUser?.phone}</div> : null}
+                                            {recipient?.address_line1 || selectedUser?.address_line1 ? <div className="text-xs text-gray-400 mt-2">{recipient?.address_line1 || selectedUser?.address_line1}</div> : null}
+                                            {recipient?.address_line2 || selectedUser?.address_line2 ? <div className="text-xs text-gray-400">{recipient?.address_line2 || selectedUser?.address_line2}</div> : null}
+                                            {[recipient?.postal_code || selectedUser?.postal_code, recipient?.city || selectedUser?.city, recipient?.country || selectedUser?.country].filter(Boolean).length ? (
+                                                <div className="text-xs text-gray-400">
+                                                    {[recipient?.postal_code || selectedUser?.postal_code, recipient?.city || selectedUser?.city, recipient?.country || selectedUser?.country].filter(Boolean).join(' • ')}
+                                                </div>
+                                            ) : null}
                                         </div>
                                     </div>
 
                                     <div className="mt-6 border border-white/10 rounded-2xl overflow-hidden">
                                         <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-white/5 text-[10px] text-gray-500 uppercase tracking-widest font-bold">
-                                            <div className="col-span-6">Descripción</div>
-                                            <div className="col-span-2 text-right">Cant.</div>
-                                            <div className="col-span-2 text-right">Unit</div>
+                                            <div className="col-span-4">Concepto</div>
+                                            <div className="col-span-2 text-right">Unid.</div>
+                                            <div className="col-span-2 text-right">Precio (sin IVA)</div>
+                                            <div className="col-span-1 text-right">IVA</div>
+                                            <div className="col-span-1 text-right">Cuota</div>
                                             <div className="col-span-2 text-right">Importe</div>
                                         </div>
                                         <div className="divide-y divide-white/10">
-                                            {items.map((it) => (
-                                                <div key={it.id} className="grid grid-cols-12 gap-3 px-4 py-3">
-                                                    <div className="col-span-6 min-w-0">
-                                                        <div className="text-sm font-black truncate">{it.title || 'Item'}</div>
-                                                        {it.ticket?.event ? (
-                                                            <div className="text-xs text-gray-400 truncate">{it.ticket.event.name?.es || it.ticket.event.name?.en || 'Evento'}</div>
-                                                        ) : null}
+                                            {(lines ?? []).map((l, idx) => {
+                                                const qty = Number(l.quantity || 0);
+                                                const base = Number(l.base || 0);
+                                                const unitBase = qty > 0 ? base / qty : 0;
+                                                const vat = Number(l.vat || 0);
+                                                return (
+                                                    <div key={l.id ?? `${idx}-${l.description}`} className="grid grid-cols-12 gap-3 px-4 py-3">
+                                                        <div className="col-span-4 min-w-0">
+                                                            <div className="text-sm font-black truncate">{l.description || 'Item'}</div>
+                                                        </div>
+                                                        <div className="col-span-2 text-right text-sm font-bold text-gray-200">{qty}</div>
+                                                        <div className="col-span-2 text-right text-sm font-bold text-gray-200">{unitBase.toFixed(2)}€</div>
+                                                        <div className="col-span-1 text-right text-sm font-bold text-gray-200">{vatRate.toFixed(0)}%</div>
+                                                        <div className="col-span-1 text-right text-sm font-bold text-gray-200">{vat.toFixed(2)}€</div>
+                                                        <div className="col-span-2 text-right text-sm font-black">{Number(l.total || 0).toFixed(2)}€</div>
                                                     </div>
-                                                    <div className="col-span-2 text-right text-sm font-bold text-gray-200">{Number(it.quantity || 0)}</div>
-                                                    <div className="col-span-2 text-right text-sm font-bold text-gray-200">{Number(it.unit_price || 0).toFixed(2)}€</div>
-                                                    <div className="col-span-2 text-right text-sm font-black">{Number(it.total_price || 0).toFixed(2)}€</div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
 
                                     <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                                        <div className="text-xs text-gray-400">{note}</div>
+                                        <div className="text-xs text-gray-400">
+                                            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-bold mb-2">Documento</div>
+                                            <div className="text-sm font-black">{number}</div>
+                                            <div className="mt-3">{note}</div>
+                                        </div>
                                         <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
                                             <div className="flex items-center justify-between text-sm text-gray-400">
-                                                <span>Subtotal</span>
-                                                <span className="font-black text-gray-200">{subtotal.toFixed(2)}€</span>
+                                                <span>Base imponible</span>
+                                                <span className="font-black text-gray-200">{baseAmount.toFixed(2)}€</span>
                                             </div>
                                             <div className="flex items-center justify-between text-sm text-gray-400 mt-2">
-                                                <span>Impuestos</span>
-                                                <span className="font-black text-gray-200">{taxes.toFixed(2)}€</span>
+                                                <span>IVA ({vatRate.toFixed(0)}%)</span>
+                                                <span className="font-black text-gray-200">{vatAmount.toFixed(2)}€</span>
                                             </div>
                                             <div className="h-px bg-white/10 my-3" />
                                             <div className="flex items-center justify-between">
                                                 <span className="text-sm font-bold text-gray-300">Total</span>
-                                                <span className="text-2xl font-black">{total.toFixed(2)}€</span>
+                                                <span className="text-2xl font-black">{totalAmount.toFixed(2)}€</span>
                                             </div>
                                         </div>
                                     </div>

@@ -107,6 +107,7 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     Route::post('/ecommerce/tickets', [AdminEcommerceController::class, 'storeTicket'])->name('admin.ecommerce.tickets.store');
     Route::post('/ecommerce/ticket-templates', [AdminEcommerceController::class, 'storeTicketTemplate'])->name('admin.ecommerce.ticket-templates.store');
     Route::patch('/ecommerce/ticket-templates/{ticketTemplate}', [AdminEcommerceController::class, 'updateTicketTemplate'])->name('admin.ecommerce.ticket-templates.update');
+    Route::delete('/transactions/{transaction}', [\App\Http\Controllers\Admin\TransactionsController::class, 'destroy'])->name('admin.transactions.destroy');
     Route::get('/agenda', [\App\Http\Controllers\Admin\AgendaController::class, 'index'])->name('admin.agenda.index');
     Route::post('/agenda/locations', [\App\Http\Controllers\Admin\AgendaController::class, 'storeLocation'])->name('admin.agenda.locations.store');
     Route::patch('/agenda/locations/{location}', [\App\Http\Controllers\Admin\AgendaController::class, 'updateLocation'])->name('admin.agenda.locations.update');

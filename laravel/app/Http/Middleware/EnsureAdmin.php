@@ -10,10 +10,9 @@ class EnsureAdmin
     public function handle(Request $request, Closure $next)
     {
         $user = $request->user();
-        if (!$user || !in_array($user->role, ['admin', 'super_admin'], true)) {
+        if (!$user || !in_array($user->role, ['admin', 'super_admin', 'super_user'], true)) {
             return redirect()->route('dashboard');
         }
         return $next($request);
     }
 }
-

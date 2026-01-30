@@ -24,7 +24,8 @@
             <div>Precio: {{ number_format((float)$it->unit_price, 2) }} €</div>
             <div>UUID: {{ $it->ticket->id }}</div>
             <div class="qr">
-                <img alt="QR" src="data:image/png;base64,{{ $service->generateQrImage($it->ticket->qr_code) }}" />
+                @php($payload = $service->buildTicketQrPayload($it->ticket, $tx))
+                <img alt="QR" src="data:image/png;base64,{{ $service->generateQrImage($payload) }}" />
             </div>
         </div>
     @endif

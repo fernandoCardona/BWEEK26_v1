@@ -7,6 +7,8 @@ use App\Models\CartItem;
 use App\Models\Product;
 use App\Models\Transaction;
 use App\Models\TransactionItem;
+use App\Services\BillingService;
+use App\Mail\InvoiceMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
@@ -52,6 +54,8 @@ class CheckoutController extends Controller
         $events = \App\Models\Event::query()->whereIn('id', $ticketTypes->pluck('event_id')->unique())->get()->keyBy('id');
 
         $lineItems = [];
+        $snapshotLines = [];
+        $snapshotLines = [];
         $total = 0.0;
         foreach ($items as $item) {
             if ($item->kind === 'product') {
@@ -69,6 +73,17 @@ class CheckoutController extends Controller
                     $total += $unit * $qty;
                     $nameBase = $p->getTranslation('name', app()->getLocale()) ?? 'Producto';
                     $name = "{$nameBase} • {$v->size}" . ($v->color ? " • {$v->color}" : '');
+                    $snapshotLines[] = [
+                        'kind' => 'product',
+                        'description' => $name,
+                        'quantity' => $qty,
+                        'unit_price' => $unit,
+                        'total' => round($unit * $qty, 2),
+                        'meta' => [
+                            'product_id' => $p->id,
+                            'product_variant_id' => $v->id,
+                        ],
+                    ];
                     $lineItems[] = [
                         'price_data' => [
                             'currency' => strtolower($cart->currency ?? 'EUR'),
@@ -91,6 +106,16 @@ class CheckoutController extends Controller
                     $qty = (int) ($item->quantity);
                     $total += $unit * $qty;
                     $name = $p->getTranslation('name', app()->getLocale()) ?? 'Producto';
+                    $snapshotLines[] = [
+                        'kind' => 'product',
+                        'description' => $name,
+                        'quantity' => $qty,
+                        'unit_price' => $unit,
+                        'total' => round($unit * $qty, 2),
+                        'meta' => [
+                            'product_id' => $p->id,
+                        ],
+                    ];
                     $lineItems[] = [
                         'price_data' => [
                             'currency' => strtolower($cart->currency ?? 'EUR'),
@@ -118,6 +143,18 @@ class CheckoutController extends Controller
                 $qty = (int) ($item->quantity);
                 $total += $unit * $qty;
                 $name = strtoupper($type->code) . ' • ' . ($ev->name['es'] ?? $ev->name['en'] ?? 'Evento');
+                $snapshotLines[] = [
+                    'kind' => 'ticket',
+                    'description' => $name,
+                    'quantity' => $qty,
+                    'unit_price' => $unit,
+                    'total' => round($unit * $qty, 2),
+                    'meta' => [
+                        'event_id' => $ev->id,
+                        'ticket_type_id' => $type->id,
+                        'ticket_type_code' => $type->code,
+                    ],
+                ];
                 $lineItems[] = [
                     'price_data' => [
                         'currency' => strtolower($cart->currency ?? 'EUR'),
@@ -137,8 +174,18 @@ class CheckoutController extends Controller
             'status' => 'pending',
             'currency' => $cart->currency ?? 'EUR',
             'total_amount' => round($total, 2),
-            'meta' => ['source' => 'stripe_checkout', 'cart_id' => $cart->id],
+            'meta' => [
+                'source' => 'stripe_checkout',
+                'cart_id' => $cart->id,
+                'lines_snapshot' => $snapshotLines,
+                'vat_rate' => (float) config('billing.vat_rate', 21.0),
+            ],
         ]);
+
+        try {
+            app(BillingService::class)->ensureProformaForTransaction($tx, $snapshotLines);
+        } catch (\Throwable $e) {
+        }
 
         $secret = Config::get('services.stripe.secret') ?? env('STRIPE_SECRET');
         $publicKey = Config::get('services.stripe.key') ?? env('STRIPE_KEY');
@@ -213,7 +260,22 @@ class CheckoutController extends Controller
                     if ($v->stock < $item->quantity) {
                         abort(422, 'No hay stock suficiente para la talla/color seleccionados');
                     }
-                    $total += (float) $v->price * (int) $item->quantity;
+                    $unit = (float) $v->price;
+                    $qty = (int) $item->quantity;
+                    $total += $unit * $qty;
+                    $nameBase = $p->getTranslation('name', app()->getLocale()) ?? 'Producto';
+                    $name = "{$nameBase} • {$v->size}" . ($v->color ? " • {$v->color}" : '');
+                    $snapshotLines[] = [
+                        'kind' => 'product',
+                        'description' => $name,
+                        'quantity' => $qty,
+                        'unit_price' => $unit,
+                        'total' => round($unit * $qty, 2),
+                        'meta' => [
+                            'product_id' => $p->id,
+                            'product_variant_id' => $v->id,
+                        ],
+                    ];
                 } else {
                     $p = $products->get($item->product_id);
                     if (!$p || !$p->is_active) {
@@ -222,7 +284,20 @@ class CheckoutController extends Controller
                     if ($p->stock < $item->quantity) {
                         abort(422, 'No hay stock suficiente');
                     }
-                    $total += (float) $p->price * (int) $item->quantity;
+                    $unit = (float) $p->price;
+                    $qty = (int) $item->quantity;
+                    $total += $unit * $qty;
+                    $name = $p->getTranslation('name', app()->getLocale()) ?? 'Producto';
+                    $snapshotLines[] = [
+                        'kind' => 'product',
+                        'description' => $name,
+                        'quantity' => $qty,
+                        'unit_price' => $unit,
+                        'total' => round($unit * $qty, 2),
+                        'meta' => [
+                            'product_id' => $p->id,
+                        ],
+                    ];
                 }
             } else {
                 $type = $ticketTypes->get($item->event_ticket_type_id);
@@ -236,7 +311,22 @@ class CheckoutController extends Controller
                 if ($type->stock < $item->quantity) {
                     abort(422, 'No hay stock suficiente de tickets');
                 }
-                $total += (float) $type->price * (int) $item->quantity;
+                $unit = (float) $type->price;
+                $qty = (int) $item->quantity;
+                $total += $unit * $qty;
+                $name = strtoupper($type->code) . ' • ' . ($ev->name['es'] ?? $ev->name['en'] ?? 'Evento');
+                $snapshotLines[] = [
+                    'kind' => 'ticket',
+                    'description' => $name,
+                    'quantity' => $qty,
+                    'unit_price' => $unit,
+                    'total' => round($unit * $qty, 2),
+                    'meta' => [
+                        'event_id' => $ev->id,
+                        'ticket_type_id' => $type->id,
+                        'ticket_type_code' => $type->code,
+                    ],
+                ];
             }
         }
 
@@ -246,8 +336,18 @@ class CheckoutController extends Controller
             'status' => 'pending',
             'currency' => $cart->currency ?? 'EUR',
             'total_amount' => round($total, 2),
-            'meta' => ['source' => 'paypal_checkout', 'cart_id' => $cart->id],
+            'meta' => [
+                'source' => 'paypal_checkout',
+                'cart_id' => $cart->id,
+                'lines_snapshot' => $snapshotLines,
+                'vat_rate' => (float) config('billing.vat_rate', 21.0),
+            ],
         ]);
+
+        try {
+            app(BillingService::class)->ensureProformaForTransaction($tx, (array) ($tx->meta['lines_snapshot'] ?? []));
+        } catch (\Throwable $e) {
+        }
 
         $accessToken = $this->paypalAccessToken();
         $baseUrl = $this->paypalBaseUrl();
@@ -464,13 +564,14 @@ class CheckoutController extends Controller
             }
             CartItem::query()->where('cart_id', $cartId)->delete();
             $tx->update(['status' => 'completed']);
-            // Send tickets email if any ticket in order
-            if ($items->where('kind', 'ticket')->count() > 0) {
-                try {
-                    \Illuminate\Support\Facades\Mail::to($tx->user)->send(new \App\Mail\TicketOrderMail($tx));
-                } catch (\Throwable $e) {
-                    // swallow mail errors to not break webhook processing
-                }
+            try {
+                app(BillingService::class)->issueInvoiceForTransaction($tx);
+            } catch (\Throwable $e) {
+            }
+
+            try {
+                \Illuminate\Support\Facades\Mail::to($tx->user)->send(new InvoiceMail($tx->id));
+            } catch (\Throwable $e) {
             }
         });
     }
