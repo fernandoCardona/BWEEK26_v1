@@ -1,0 +1,101 @@
+{
+  "language": "Idioma",
+  "published": "Publicat",
+  "draft": "Esborrany",
+  "save_all": "Desar-ho tot",
+  "init_sections": "Inicialitzar seccions",
+  "import_legacy": "Importar legacy",
+  "page": "Pàgina",
+  "add_section": "Afegir secció",
+  "type": "Tipus",
+  "order": "Ordre",
+  "section": "Secció",
+  "active": "Activa",
+  "inactive": "Inactiva",
+  "delete": "Eliminar",
+  "key": "Key",
+  "title": "Títol",
+  "meta_description": "Meta descripció",
+  "image": "Imatge",
+  "background": "Fons",
+  "shared": "Compartida",
+  "per_locale": "Per idioma",
+  "upload": "Pujar",
+  "remove": "Treure",
+  "no_image": "Sense imatge",
+  "poi_title": "Punts d’interès",
+  "poi_include_agenda": "Incloure ubicacions d’Agenda",
+  "poi_agenda_locations": "Agenda locations",
+  "poi_no_agenda_with_coords": "No hi ha ubicacions amb lat/lng a Agenda.",
+  "poi_custom_title": "Punts personalitzats",
+  "poi_add": "Afegir punt",
+  "poi_label": "POI",
+  "poi_name": "Nom",
+  "poi_address": "Adreça",
+  "poi_maps_url": "Google Maps URL",
+  "poi_lat": "Lat",
+  "poi_lng": "Lng",
+  "key_optional": "Key (opcional)",
+  "fields": {
+    "hero": {
+      "badge": "Badge (data / lloc)",
+      "title": "Títol (H1)",
+      "subtitle": "Subtítol",
+      "cta_primary_label": "CTA primari (label)",
+      "cta_primary_url": "CTA primari (url)",
+      "cta_secondary_label": "CTA secundari (label)",
+      "cta_secondary_url": "CTA secundari (url)"
+    },
+    "next_event": {
+      "kicker": "Kicker",
+      "heading": "Títol secció",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)",
+      "big_label": "Targeta gran (label)",
+      "big_title": "Targeta gran (títol)",
+      "big_body": "Targeta gran (text)",
+      "card1_title": "Targeta 1 (títol)",
+      "card1_subtitle": "Targeta 1 (subtítol)",
+      "card2_title": "Targeta 2 (títol)",
+      "card2_subtitle": "Targeta 2 (subtítol)",
+      "wide_title": "Targeta ampla (títol)",
+      "wide_subtitle": "Targeta ampla (subtítol)"
+    },
+    "shop_carousel": {
+      "kicker": "Kicker",
+      "title": "Títol secció",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "magazine": {
+      "kicker": "Kicker",
+      "title": "Títol secció",
+      "subtitle": "Subtítol",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "testimonial": {
+      "kicker": "Kicker",
+      "title": "Títol secció",
+      "quote": "Testimoni",
+      "author": "Autor",
+      "role": "Càrrec / detall"
+    },
+    "map": {
+      "kicker": "Kicker",
+      "title": "Títol secció",
+      "subtitle": "Text",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "generic": {
+      "title": "Títol",
+      "subtitle": "Subtítol",
+      "body": "Text",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    }
+  },
+  "yes": "Sí",
+  "no": "No"
+}

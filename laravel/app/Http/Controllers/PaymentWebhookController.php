@@ -19,10 +19,11 @@ class PaymentWebhookController extends Controller
         $payload = $request->getContent();
         $sigHeader = $request->header('Stripe-Signature');
         $secret = env('STRIPE_WEBHOOK_SECRET');
-        if ($secret) {
-            if (!$this->verifyStripeSignature($payload, $sigHeader, $secret)) {
-                return response()->json(['error' => 'invalid_signature'], 400);
-            }
+        if (!$secret) {
+            return response()->json(['error' => 'missing_webhook_secret'], 500);
+        }
+        if (!$this->verifyStripeSignature($payload, $sigHeader, $secret)) {
+            return response()->json(['error' => 'invalid_signature'], 400);
         }
 
         $event = json_decode($payload, true);

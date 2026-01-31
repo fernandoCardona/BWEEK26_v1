@@ -1,0 +1,101 @@
+{
+  "language": "Language",
+  "published": "Published",
+  "draft": "Draft",
+  "save_all": "Save all",
+  "init_sections": "Init sections",
+  "import_legacy": "Import legacy",
+  "page": "Page",
+  "add_section": "Add section",
+  "type": "Type",
+  "order": "Order",
+  "section": "Section",
+  "active": "Active",
+  "inactive": "Inactive",
+  "delete": "Delete",
+  "key": "Key",
+  "title": "Title",
+  "meta_description": "Meta description",
+  "image": "Image",
+  "background": "Background",
+  "shared": "Shared",
+  "per_locale": "Per language",
+  "upload": "Upload",
+  "remove": "Remove",
+  "no_image": "No image",
+  "poi_title": "Points of interest",
+  "poi_include_agenda": "Include Agenda locations",
+  "poi_agenda_locations": "Agenda locations",
+  "poi_no_agenda_with_coords": "No Agenda locations with lat/lng.",
+  "poi_custom_title": "Custom points",
+  "poi_add": "Add point",
+  "poi_label": "POI",
+  "poi_name": "Name",
+  "poi_address": "Address",
+  "poi_maps_url": "Google Maps URL",
+  "poi_lat": "Lat",
+  "poi_lng": "Lng",
+  "key_optional": "Key (optional)",
+  "fields": {
+    "hero": {
+      "badge": "Badge (date / place)",
+      "title": "Title (H1)",
+      "subtitle": "Subtitle",
+      "cta_primary_label": "Primary CTA (label)",
+      "cta_primary_url": "Primary CTA (url)",
+      "cta_secondary_label": "Secondary CTA (label)",
+      "cta_secondary_url": "Secondary CTA (url)"
+    },
+    "next_event": {
+      "kicker": "Kicker",
+      "heading": "Section title",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)",
+      "big_label": "Big card (label)",
+      "big_title": "Big card (title)",
+      "big_body": "Big card (text)",
+      "card1_title": "Card 1 (title)",
+      "card1_subtitle": "Card 1 (subtitle)",
+      "card2_title": "Card 2 (title)",
+      "card2_subtitle": "Card 2 (subtitle)",
+      "wide_title": "Wide card (title)",
+      "wide_subtitle": "Wide card (subtitle)"
+    },
+    "shop_carousel": {
+      "kicker": "Kicker",
+      "title": "Section title",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "magazine": {
+      "kicker": "Kicker",
+      "title": "Section title",
+      "subtitle": "Subtitle",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "testimonial": {
+      "kicker": "Kicker",
+      "title": "Section title",
+      "quote": "Testimonial",
+      "author": "Author",
+      "role": "Role / detail"
+    },
+    "map": {
+      "kicker": "Kicker",
+      "title": "Section title",
+      "subtitle": "Text",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "generic": {
+      "title": "Title",
+      "subtitle": "Subtitle",
+      "body": "Text",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    }
+  },
+  "yes": "Yes",
+  "no": "No"
+}

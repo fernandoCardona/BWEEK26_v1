@@ -32,6 +32,7 @@ class ProfileController extends Controller
             'city' => ['nullable', 'string', 'max:120'],
             'postal_code' => ['nullable', 'string', 'max:30'],
             'country' => ['nullable', 'string', 'max:120'],
+            'preferred_locale' => ['nullable', 'string', 'in:es,ca,en,fr,it,de'],
             'no_newsletter' => ['nullable', 'boolean'],
             'avatar' => ['nullable', 'image', 'max:2048'],
             'remove_avatar' => ['nullable', 'boolean'],
@@ -51,8 +52,9 @@ class ProfileController extends Controller
             'address_line2' => $data['address_line2'] ?? null,
             'city' => $data['city'] ?? null,
             'postal_code' => $data['postal_code'] ?? null,
-            'country' => trim((string) ($data['country'] ?? '')) ?: null,
+            'country' => (($c = trim((string) ($data['country'] ?? ''))) !== '') ? strtoupper($c) : null,
             'newsletter_subscribed' => !((bool) ($data['no_newsletter'] ?? false)),
+            'preferred_locale' => $data['preferred_locale'] ?? ($user->preferred_locale ?: 'en'),
         ]);
 
         if ((bool) ($data['remove_avatar'] ?? false) && !$request->hasFile('avatar')) {
@@ -75,6 +77,10 @@ class ProfileController extends Controller
         }
 
         $user->save();
+
+        if (!empty($data['preferred_locale'])) {
+            session(['app_locale' => $data['preferred_locale']]);
+        }
 
         return back();
     }

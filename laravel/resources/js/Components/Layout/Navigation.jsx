@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useForm, usePage } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import { FiLogOut, FiShoppingCart, FiUser, FiX } from 'react-icons/fi';
 import { FaFacebookF, FaInstagram, FaTelegramPlane, FaWhatsapp } from 'react-icons/fa';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 import SwitchToggle from '@/Components/SwitchToggle';
+import { tFrom } from '@/i18n/t';
 
 export default function Navigation({ onOpenLegal }) {
     const { url, props } = usePage();
@@ -131,6 +132,15 @@ export default function Navigation({ onOpenLegal }) {
         });
     };
 
+    const t = (key, fallback) => tFrom(props?.translations?.web, key, fallback);
+
+    const switchLanguage = (code) => {
+        const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+        params.set('lang', code);
+        const nextUrl = `${typeof window !== 'undefined' ? window.location.pathname : '/'}?${params.toString()}`;
+        router.get(nextUrl, {}, { preserveScroll: true, preserveState: false, replace: true });
+    };
+
     return (
         <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-black/80 backdrop-blur-lg border-b border-white/10 py-4' : 'bg-transparent py-6'}`}>
             <div className="container mx-auto px-6 flex items-center justify-between">
@@ -152,7 +162,7 @@ export default function Navigation({ onOpenLegal }) {
                             closeTimer.current = setTimeout(() => setOpenKey(null), closeDelayMs);
                         }}
                     >
-                        <Link href="/about" className="nav-link">About</Link>
+                        <Link href="/about" className="nav-link">{t('nav.about', 'About')}</Link>
                         <div className={`absolute left-0 top-full pt-4 ${openKey==='about' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                             <div className="glass-card p-3 bg-black/85 border border-white/15">
                                 <ul className="min-w-64">
@@ -184,7 +194,7 @@ export default function Navigation({ onOpenLegal }) {
                             closeTimer.current = setTimeout(() => setOpenKey(null), closeDelayMs);
                         }}
                     >
-                        <Link href="/program" className="nav-link">Events</Link>
+                        <Link href="/program" className="nav-link">{t('nav.events', 'Events')}</Link>
                         {menu.events?.length > 0 && (
                             <div className={`absolute left-0 top-full pt-4 ${openKey==='events' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                                 <div className="glass-card p-3 bg-black/85 border border-white/15">
@@ -207,12 +217,12 @@ export default function Navigation({ onOpenLegal }) {
 
                     {/* MAGAZINE direct link to noticias (no dropdown) */}
                     <li>
-                        <Link href="/magazine/noticias" className="nav-link">Magazine</Link>
+                        <Link href="/magazine/noticias" className="nav-link">{t('nav.magazine', 'Magazine')}</Link>
                     </li>
 
                     {/* STORE direct link to ecommerce */}
                     <li>
-                        <Link href="/shop" className="nav-link">Store</Link>
+                        <Link href="/shop" className="nav-link">{t('nav.store', 'Store')}</Link>
                     </li>
 
                     {/* RECOMMENDATIONS with custom dropdown */}
@@ -226,7 +236,7 @@ export default function Navigation({ onOpenLegal }) {
                             closeTimer.current = setTimeout(() => setOpenKey(null), closeDelayMs);
                         }}
                     >
-                        <Link href="/recomendations" className="nav-link">Recomendations</Link>
+                        <Link href="/recomendations" className="nav-link">{t('nav.recommendations', 'Recomendations')}</Link>
                         <div className={`absolute left-0 top-full pt-4 ${openKey==='recomendations' ? 'opacity-100 visible' : 'opacity-0 invisible'} transition-all duration-200`}>
                             <div className="glass-card p-3 bg-black/85 border border-white/15">
                                 <ul className="min-w-64">
@@ -270,9 +280,13 @@ export default function Navigation({ onOpenLegal }) {
                                 <ul className="w-max">
                                     {Object.entries(locales).map(([code]) => (
                                         <li key={code}>
-                                            <a href="#" className="nav-link block px-3 py-2 text-sm whitespace-nowrap">
+                                            <button
+                                                type="button"
+                                                className="nav-link block px-3 py-2 text-sm whitespace-nowrap w-full text-left"
+                                                onClick={() => switchLanguage(code)}
+                                            >
                                                 {code.toUpperCase()}
-                                            </a>
+                                            </button>
                                         </li>
                                     ))}
                                 </ul>
@@ -306,7 +320,7 @@ export default function Navigation({ onOpenLegal }) {
                                 }}
                                 className="btn-primary py-2 px-5 text-sm"
                             >
-                                Acceder
+                                {t('nav.login', 'Acceder')}
                             </button>
                         </div>
                     )}

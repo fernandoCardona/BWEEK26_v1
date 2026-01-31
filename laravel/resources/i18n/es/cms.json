@@ -1,0 +1,101 @@
+{
+  "language": "Idioma",
+  "published": "Publicado",
+  "draft": "Borrador",
+  "save_all": "Guardar todo",
+  "init_sections": "Inicializar secciones",
+  "import_legacy": "Importar legacy",
+  "page": "Página",
+  "add_section": "Añadir sección",
+  "type": "Tipo",
+  "order": "Orden",
+  "section": "Sección",
+  "active": "Activa",
+  "inactive": "Inactiva",
+  "delete": "Eliminar",
+  "key": "Key",
+  "title": "Título",
+  "meta_description": "Meta descripción",
+  "image": "Imagen",
+  "background": "Background",
+  "shared": "Compartida",
+  "per_locale": "Por idioma",
+  "upload": "Subir",
+  "remove": "Quitar",
+  "no_image": "Sin imagen",
+  "poi_title": "Puntos de interés",
+  "poi_include_agenda": "Incluir ubicaciones de Agenda",
+  "poi_agenda_locations": "Agenda locations",
+  "poi_no_agenda_with_coords": "No hay ubicaciones con lat/lng en Agenda.",
+  "poi_custom_title": "Puntos personalizados",
+  "poi_add": "Añadir punto",
+  "poi_label": "POI",
+  "poi_name": "Nombre",
+  "poi_address": "Dirección",
+  "poi_maps_url": "Google Maps URL",
+  "poi_lat": "Lat",
+  "poi_lng": "Lng",
+  "key_optional": "Key (opcional)",
+  "fields": {
+    "hero": {
+      "badge": "Badge (fecha / lugar)",
+      "title": "Título (H1)",
+      "subtitle": "Subtítulo",
+      "cta_primary_label": "CTA primario (label)",
+      "cta_primary_url": "CTA primario (url)",
+      "cta_secondary_label": "CTA secundario (label)",
+      "cta_secondary_url": "CTA secundario (url)"
+    },
+    "next_event": {
+      "kicker": "Kicker",
+      "heading": "Título sección",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)",
+      "big_label": "Card grande (label)",
+      "big_title": "Card grande (título)",
+      "big_body": "Card grande (texto)",
+      "card1_title": "Card 1 (título)",
+      "card1_subtitle": "Card 1 (subtítulo)",
+      "card2_title": "Card 2 (título)",
+      "card2_subtitle": "Card 2 (subtítulo)",
+      "wide_title": "Card ancha (título)",
+      "wide_subtitle": "Card ancha (subtítulo)"
+    },
+    "shop_carousel": {
+      "kicker": "Kicker",
+      "title": "Título sección",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "magazine": {
+      "kicker": "Kicker",
+      "title": "Título sección",
+      "subtitle": "Subtítulo",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "testimonial": {
+      "kicker": "Kicker",
+      "title": "Título sección",
+      "quote": "Testimonio",
+      "author": "Autor",
+      "role": "Cargo / detalle"
+    },
+    "map": {
+      "kicker": "Kicker",
+      "title": "Título sección",
+      "subtitle": "Texto",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "generic": {
+      "title": "Título",
+      "subtitle": "Subtítulo",
+      "body": "Texto",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    }
+  },
+  "yes": "Sí",
+  "no": "No"
+}

@@ -4,6 +4,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\PagesController as AdminPagesController;
+use App\Http\Controllers\Admin\SectionsController as AdminSectionsController;
 use App\Http\Controllers\Admin\SettingsController as AdminSettingsController;
 use App\Http\Controllers\Admin\EventsController as AdminEventsController;
 use App\Http\Controllers\Admin\ProductsController as AdminProductsController;
@@ -33,11 +34,11 @@ Route::get('/shop/{product}', [\App\Http\Controllers\ProductController::class, '
 Route::get('/events', [\App\Http\Controllers\EventController::class, 'index'])->name('events.index');
 Route::get('/events/{event}', [\App\Http\Controllers\EventController::class, 'show'])->name('events.show');
 
-Route::post('/chatbot/message', [ChatbotWebController::class, 'message'])->name('chatbot.message');
+Route::post('/chatbot/message', [ChatbotWebController::class, 'message'])->middleware('throttle:30,1')->name('chatbot.message');
 
 Route::get('/menu/{category}/items', [WebsiteMenuController::class, 'categoryJson'])->name('menu.items');
 
-Route::get('/about', [WebsiteMenuController::class, 'category'])->defaults('category', 'about')->name('about.index');
+Route::get('/about', [PageController::class, 'show'])->defaults('slug', 'about')->name('about.index');
 Route::get('/about/{page}', function ($page) {
     return app(WebsiteMenuController::class)->page('about', $page);
 })->name('about.page');
@@ -47,17 +48,18 @@ Route::get('/program/{page}', function ($page) {
     return app(WebsiteMenuController::class)->page('events', $page);
 })->name('program.page');
 
-Route::get('/magazine', [WebsiteMenuController::class, 'category'])->defaults('category', 'magazine')->name('magazine.index');
+Route::get('/magazine', [PageController::class, 'show'])->defaults('slug', 'magazine')->name('magazine.index');
 Route::get('/magazine/{page}', function ($page) {
     return app(WebsiteMenuController::class)->page('magazine', $page);
 })->name('magazine.page');
 
-Route::get('/recomendations', [WebsiteMenuController::class, 'category'])->defaults('category', 'recomendations')->name('recomendations.index');
+Route::get('/recomendations', [PageController::class, 'show'])->defaults('slug', 'recommendations')->name('recomendations.index');
 Route::get('/recomendations/{page}', function ($page) {
     return app(WebsiteMenuController::class)->page('recomendations', $page);
 })->name('recomendations.page');
 
-Route::get('/store', [WebsiteMenuController::class, 'category'])->defaults('category', 'store')->name('store.index');
+Route::get('/store', [PageController::class, 'show'])->defaults('slug', 'store')->name('store.index');
+Route::get('/legal', [PageController::class, 'show'])->defaults('slug', 'legal')->name('legal.index');
 Route::get('/store/{page}', function ($page) {
     return app(WebsiteMenuController::class)->page('store', $page);
 })->name('store.page');
@@ -182,6 +184,19 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     Route::get('/pages', [AdminPagesController::class, 'index'])->name('admin.pages.index');
     Route::get('/pages/{page}', [AdminPagesController::class, 'edit'])->name('admin.pages.edit');
     Route::patch('/pages/{page}', [AdminPagesController::class, 'update'])->name('admin.pages.update');
+    Route::patch('/pages/{page}/bulk', [AdminPagesController::class, 'bulkUpdate'])->name('admin.pages.bulk');
+    Route::middleware([EnsureSuperAdmin::class])->group(function () {
+        Route::post('/pages/seed', [AdminPagesController::class, 'seed'])->name('admin.pages.seed');
+        Route::post('/pages/{page}/init-home', [AdminPagesController::class, 'initHome'])->name('admin.pages.init_home');
+        Route::post('/pages/{page}/init-template', [AdminPagesController::class, 'initTemplate'])->name('admin.pages.init_template');
+        Route::post('/pages/{page}/import-legacy', [AdminPagesController::class, 'importLegacy'])->name('admin.pages.import_legacy');
+    });
+
+    Route::post('/pages/{page}/sections', [AdminSectionsController::class, 'store'])->name('admin.pages.sections.store');
+    Route::patch('/sections/{section}', [AdminSectionsController::class, 'update'])->name('admin.sections.update');
+    Route::delete('/sections/{section}', [AdminSectionsController::class, 'destroy'])->name('admin.sections.destroy');
+    Route::post('/sections/{section}/images/{key}', [AdminSectionsController::class, 'storeImage'])->name('admin.sections.images.store');
+    Route::delete('/sections/{section}/images/{key}', [AdminSectionsController::class, 'destroyImage'])->name('admin.sections.images.destroy');
 
     Route::get('/settings', AdminSettingsController::class)->name('admin.settings');
     Route::get('/settings/profile', [AdminSettingsController::class, 'profile'])->name('admin.settings.profile');
@@ -196,5 +211,5 @@ Route::get('/{slug}', [PageController::class, 'show'])
 
 require __DIR__ . '/auth.php';
 
-Route::post('/webhooks/stripe', [\App\Http\Controllers\PaymentWebhookController::class, 'stripe'])->name('webhooks.stripe');
-Route::post('/webhooks/paypal', [\App\Http\Controllers\PaymentWebhookController::class, 'paypal'])->name('webhooks.paypal');
+Route::post('/webhooks/stripe', [\App\Http\Controllers\PaymentWebhookController::class, 'stripe'])->middleware('throttle:60,1')->name('webhooks.stripe');
+Route::post('/webhooks/paypal', [\App\Http\Controllers\PaymentWebhookController::class, 'paypal'])->middleware('throttle:60,1')->name('webhooks.paypal');

@@ -5,6 +5,7 @@ import { router, useForm, usePage } from '@inertiajs/react';
 import useLockBodyScroll from '@/hooks/useLockBodyScroll';
 import ImagePickerBox from '@/Components/ImagePickerBox';
 import SwitchToggle from '@/Components/SwitchToggle';
+import CustomSelect from '@/Components/CustomSelect';
 
 export default function Edit() {
     const { props } = usePage();
@@ -27,6 +28,7 @@ export default function Edit() {
         city: user?.city ?? '',
         postal_code: user?.postal_code ?? '',
         country: user?.country ?? '',
+        preferred_locale: user?.preferred_locale ?? 'en',
         no_newsletter: !(user?.newsletter_subscribed ?? true),
         avatar: null,
         remove_avatar: false,
@@ -127,11 +129,11 @@ export default function Edit() {
                                 onChange={(e) => profileForm.setData('birth_date', e.target.value)}
                                 error={profileForm.errors.birth_date}
                             />
-                            <SelectField
+                            <CustomSelect
                                 label="Sexo"
                                 value={profileForm.data.gender}
-                                onChange={(e) => profileForm.setData('gender', e.target.value)}
-                                error={profileForm.errors.gender}
+                                onChange={(v) => profileForm.setData('gender', v)}
+                                disabled={profileForm.processing}
                                 options={[
                                     { value: 'prefer_not_say', label: 'Prefiero no decirlo' },
                                     { value: 'male', label: 'Hombre' },
@@ -140,6 +142,20 @@ export default function Edit() {
                                 ]}
                             />
                         </div>
+                        <CustomSelect
+                            label="Idioma predeterminado"
+                            value={profileForm.data.preferred_locale}
+                            onChange={(v) => profileForm.setData('preferred_locale', v)}
+                            disabled={profileForm.processing}
+                            options={[
+                                { value: 'es', label: 'Español (ES)' },
+                                { value: 'ca', label: 'Català (CA)' },
+                                { value: 'en', label: 'English (EN)' },
+                                { value: 'fr', label: 'Français (FR)' },
+                                { value: 'it', label: 'Italiano (IT)' },
+                                { value: 'de', label: 'Deutsch (DE)' },
+                            ]}
+                        />
                         <Field label="Email" type="email" value={profileForm.data.email} onChange={(e) => profileForm.setData('email', e.target.value)} error={profileForm.errors.email} />
                         <Field label="Teléfono" value={profileForm.data.phone} onChange={(e) => profileForm.setData('phone', e.target.value)} error={profileForm.errors.phone} />
                         <Field
@@ -235,22 +251,6 @@ function Field({ label, type = 'text', value, onChange, error }) {
                 value={value}
                 onChange={onChange}
             />
-            {error && <div className="text-xs text-red-400 mt-1">{error}</div>}
-        </div>
-    );
-}
-
-function SelectField({ label, value, onChange, options, error }) {
-    return (
-        <div>
-            <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">{label}</label>
-            <select className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3" value={value} onChange={onChange}>
-                {options.map((o) => (
-                    <option key={o.value} value={o.value}>
-                        {o.label}
-                    </option>
-                ))}
-            </select>
             {error && <div className="text-xs text-red-400 mt-1">{error}</div>}
         </div>
     );

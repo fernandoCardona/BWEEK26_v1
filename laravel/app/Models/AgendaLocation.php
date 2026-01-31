@@ -18,6 +18,8 @@ class AgendaLocation extends Model
         'address',
         'google_maps_url',
         'notes',
+        'lat',
+        'lng',
         'is_active',
     ];
 
@@ -25,6 +27,8 @@ class AgendaLocation extends Model
         'id' => 'string',
         'name' => 'json',
         'location' => 'json',
+        'lat' => 'float',
+        'lng' => 'float',
         'is_active' => 'boolean',
     ];
 
@@ -38,4 +42,3 @@ class AgendaLocation extends Model
         });
     }
 }
-

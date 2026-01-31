@@ -1,7 +1,8 @@
 import React from 'react';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import Layout from '@/Layouts/Layout';
 import { motion as m } from 'framer-motion';
+import { tFrom } from '@/i18n/t';
 
 export default function AdminLayout({
   active = 'overview',
@@ -11,15 +12,18 @@ export default function AdminLayout({
   containerClassName = '',
   children,
 }) {
+  const { props } = usePage();
+  const t = (key, fallback) => tFrom(props?.translations?.admin, key, fallback);
+  const headerTitle = t('header.title', title);
   const tabs = [
-    { key: 'overview', label: 'Overview', href: route('admin.dashboard') },
-    { key: 'cms', label: 'CMS', href: route('admin.pages.index') },
-    { key: 'events', label: 'Events', href: route('admin.events.index') },
-    { key: 'agenda', label: 'Agenda', href: route('admin.agenda.index') },
-    { key: 'ecommerce', label: 'Ecommerce', href: route('admin.ecommerce.index') },
-    { key: 'marketing', label: 'Marketing', href: route('admin.marketing.index') },
-    { key: 'users', label: 'Users', href: route('admin.users.index') },
-    { key: 'settings', label: 'Settings', href: route('profile.edit') },
+    { key: 'overview', label: t('tabs.overview', 'Overview'), href: route('admin.dashboard') },
+    { key: 'cms', label: t('tabs.cms', 'CMS'), href: route('admin.pages.index') },
+    { key: 'events', label: t('tabs.events', 'Events'), href: route('admin.events.index') },
+    { key: 'agenda', label: t('tabs.agenda', 'Agenda'), href: route('admin.agenda.index') },
+    { key: 'ecommerce', label: t('tabs.ecommerce', 'Ecommerce'), href: route('admin.ecommerce.index') },
+    { key: 'marketing', label: t('tabs.marketing', 'Marketing'), href: route('admin.marketing.index') },
+    { key: 'users', label: t('tabs.users', 'Users'), href: route('admin.users.index') },
+    { key: 'settings', label: t('tabs.settings', 'Settings'), href: route('profile.edit') },
   ];
 
   return (
@@ -34,14 +38,14 @@ export default function AdminLayout({
           >
             <div>
               <h1 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 uppercase">
-                {title.split(' ').map((word, i) => (
+                {headerTitle.split(' ').map((word, i) => (
                   <span key={`${word}-${i}`} className={i === 1 ? 'text-gradient' : ''}>
                     {i > 0 ? ' ' : ''}
                     {word}
                   </span>
                 ))}
               </h1>
-              <p className="text-gray-400 font-medium">{subtitle}</p>
+              <p className="text-gray-400 font-medium">{t('header.subtitle', subtitle)}</p>
             </div>
             <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
               {tabs.map((t) => (

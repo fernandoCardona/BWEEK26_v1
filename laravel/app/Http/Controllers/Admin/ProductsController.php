@@ -249,6 +249,11 @@ class ProductsController extends Controller
         if ($product->image_path) {
             Storage::disk('public')->delete($product->image_path);
         }
+        $product->images()->get(['path'])->each(function (ProductImage $img) {
+            if ($img->path) {
+                Storage::disk('public')->delete($img->path);
+            }
+        });
         $product->delete();
         return redirect()->route('admin.products.index');
     }

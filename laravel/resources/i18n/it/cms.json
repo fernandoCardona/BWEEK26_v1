@@ -1,0 +1,101 @@
+{
+  "language": "Lingua",
+  "published": "Pubblicato",
+  "draft": "Bozza",
+  "save_all": "Salva tutto",
+  "init_sections": "Inizializza sezioni",
+  "import_legacy": "Importa legacy",
+  "page": "Pagina",
+  "add_section": "Aggiungi sezione",
+  "type": "Tipo",
+  "order": "Ordine",
+  "section": "Sezione",
+  "active": "Attiva",
+  "inactive": "Inattiva",
+  "delete": "Elimina",
+  "key": "Key",
+  "title": "Titolo",
+  "meta_description": "Meta descrizione",
+  "image": "Immagine",
+  "background": "Sfondo",
+  "shared": "Condivisa",
+  "per_locale": "Per lingua",
+  "upload": "Carica",
+  "remove": "Rimuovi",
+  "no_image": "Nessuna immagine",
+  "poi_title": "Punti di interesse",
+  "poi_include_agenda": "Includi locations Agenda",
+  "poi_agenda_locations": "Agenda locations",
+  "poi_no_agenda_with_coords": "Nessuna location Agenda con lat/lng.",
+  "poi_custom_title": "Punti personalizzati",
+  "poi_add": "Aggiungi punto",
+  "poi_label": "POI",
+  "poi_name": "Nome",
+  "poi_address": "Indirizzo",
+  "poi_maps_url": "Google Maps URL",
+  "poi_lat": "Lat",
+  "poi_lng": "Lng",
+  "key_optional": "Key (opzionale)",
+  "fields": {
+    "hero": {
+      "badge": "Badge (data / luogo)",
+      "title": "Titolo (H1)",
+      "subtitle": "Sottotitolo",
+      "cta_primary_label": "CTA primario (label)",
+      "cta_primary_url": "CTA primario (url)",
+      "cta_secondary_label": "CTA secondario (label)",
+      "cta_secondary_url": "CTA secondario (url)"
+    },
+    "next_event": {
+      "kicker": "Kicker",
+      "heading": "Titolo sezione",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)",
+      "big_label": "Card grande (label)",
+      "big_title": "Card grande (titolo)",
+      "big_body": "Card grande (testo)",
+      "card1_title": "Card 1 (titolo)",
+      "card1_subtitle": "Card 1 (sottotitolo)",
+      "card2_title": "Card 2 (titolo)",
+      "card2_subtitle": "Card 2 (sottotitolo)",
+      "wide_title": "Card larga (titolo)",
+      "wide_subtitle": "Card larga (sottotitolo)"
+    },
+    "shop_carousel": {
+      "kicker": "Kicker",
+      "title": "Titolo sezione",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "magazine": {
+      "kicker": "Kicker",
+      "title": "Titolo sezione",
+      "subtitle": "Sottotitolo",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "testimonial": {
+      "kicker": "Kicker",
+      "title": "Titolo sezione",
+      "quote": "Testimonianza",
+      "author": "Autore",
+      "role": "Ruolo / dettaglio"
+    },
+    "map": {
+      "kicker": "Kicker",
+      "title": "Titolo sezione",
+      "subtitle": "Testo",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "generic": {
+      "title": "Titolo",
+      "subtitle": "Sottotitolo",
+      "body": "Testo",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    }
+  },
+  "yes": "Sì",
+  "no": "No"
+}

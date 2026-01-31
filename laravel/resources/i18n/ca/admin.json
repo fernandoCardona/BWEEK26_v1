@@ -1,0 +1,17 @@
+{
+  "header": {
+    "title": "CONTROL CENTER",
+    "subtitle": "Bears Sitges Week 2026 • Admin"
+  },
+  "tabs": {
+    "overview": "Overview",
+    "cms": "CMS",
+    "events": "Esdeveniments",
+    "agenda": "Agenda",
+    "ecommerce": "Ecommerce",
+    "marketing": "Marketing",
+    "users": "Usuaris",
+    "settings": "Ajustos"
+  }
+}
+

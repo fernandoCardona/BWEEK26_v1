@@ -1,0 +1,101 @@
+{
+  "language": "Langue",
+  "published": "Publié",
+  "draft": "Brouillon",
+  "save_all": "Tout enregistrer",
+  "init_sections": "Initialiser les sections",
+  "import_legacy": "Importer legacy",
+  "page": "Page",
+  "add_section": "Ajouter une section",
+  "type": "Type",
+  "order": "Ordre",
+  "section": "Section",
+  "active": "Active",
+  "inactive": "Inactive",
+  "delete": "Supprimer",
+  "key": "Key",
+  "title": "Titre",
+  "meta_description": "Méta description",
+  "image": "Image",
+  "background": "Arrière-plan",
+  "shared": "Partagée",
+  "per_locale": "Par langue",
+  "upload": "Téléverser",
+  "remove": "Retirer",
+  "no_image": "Aucune image",
+  "poi_title": "Points d’intérêt",
+  "poi_include_agenda": "Inclure les lieux Agenda",
+  "poi_agenda_locations": "Agenda locations",
+  "poi_no_agenda_with_coords": "Aucun lieu Agenda avec lat/lng.",
+  "poi_custom_title": "Points personnalisés",
+  "poi_add": "Ajouter un point",
+  "poi_label": "POI",
+  "poi_name": "Nom",
+  "poi_address": "Adresse",
+  "poi_maps_url": "Google Maps URL",
+  "poi_lat": "Lat",
+  "poi_lng": "Lng",
+  "key_optional": "Key (optionnel)",
+  "fields": {
+    "hero": {
+      "badge": "Badge (date / lieu)",
+      "title": "Titre (H1)",
+      "subtitle": "Sous-titre",
+      "cta_primary_label": "CTA principal (label)",
+      "cta_primary_url": "CTA principal (url)",
+      "cta_secondary_label": "CTA secondaire (label)",
+      "cta_secondary_url": "CTA secondaire (url)"
+    },
+    "next_event": {
+      "kicker": "Kicker",
+      "heading": "Titre de section",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)",
+      "big_label": "Grande carte (label)",
+      "big_title": "Grande carte (titre)",
+      "big_body": "Grande carte (texte)",
+      "card1_title": "Carte 1 (titre)",
+      "card1_subtitle": "Carte 1 (sous-titre)",
+      "card2_title": "Carte 2 (titre)",
+      "card2_subtitle": "Carte 2 (sous-titre)",
+      "wide_title": "Carte large (titre)",
+      "wide_subtitle": "Carte large (sous-titre)"
+    },
+    "shop_carousel": {
+      "kicker": "Kicker",
+      "title": "Titre de section",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "magazine": {
+      "kicker": "Kicker",
+      "title": "Titre de section",
+      "subtitle": "Sous-titre",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "testimonial": {
+      "kicker": "Kicker",
+      "title": "Titre de section",
+      "quote": "Témoignage",
+      "author": "Auteur",
+      "role": "Rôle / détail"
+    },
+    "map": {
+      "kicker": "Kicker",
+      "title": "Titre de section",
+      "subtitle": "Texte",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    },
+    "generic": {
+      "title": "Titre",
+      "subtitle": "Sous-titre",
+      "body": "Texte",
+      "cta_label": "CTA (label)",
+      "cta_url": "CTA (url)"
+    }
+  },
+  "yes": "Oui",
+  "no": "Non"
+}

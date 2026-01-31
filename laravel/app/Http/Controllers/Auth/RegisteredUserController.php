@@ -13,6 +13,11 @@ use Inertia\Inertia;
 
 class RegisteredUserController extends Controller
 {
+    private function supportedLocales(): array
+    {
+        return ['es', 'ca', 'en', 'fr', 'it', 'de'];
+    }
+
     public function create()
     {
         return Inertia::render('Auth/Register');
@@ -24,6 +29,7 @@ class RegisteredUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'preferred_locale' => ['nullable', 'string', 'in:es,ca,en,fr,it,de'],
         ]);
 
         if (User::query()->where('email', $data['email'])->exists()) {
@@ -41,6 +47,7 @@ class RegisteredUserController extends Controller
                 'payload' => [
                     'name' => $data['name'],
                     'password_hash' => Hash::make($data['password']),
+                    'preferred_locale' => $data['preferred_locale'] ?? app()->getLocale(),
                 ],
                 'expires_at' => now()->addMinutes(10),
             ]
@@ -80,6 +87,13 @@ class RegisteredUserController extends Controller
         $payload = $record->payload ?? [];
         $name = (string) ($payload['name'] ?? '');
         $passwordHash = (string) ($payload['password_hash'] ?? '');
+        $preferredLocale = strtolower((string) ($payload['preferred_locale'] ?? ''));
+        if (!in_array($preferredLocale, $this->supportedLocales(), true)) {
+            $preferredLocale = app()->getLocale();
+        }
+        if (!in_array($preferredLocale, $this->supportedLocales(), true)) {
+            $preferredLocale = 'en';
+        }
 
         if ($name === '' || $passwordHash === '') {
             return back()->withErrors([
@@ -93,6 +107,7 @@ class RegisteredUserController extends Controller
             'email' => $data['email'],
             'password' => $passwordHash,
             'email_verified_at' => now(),
+            'preferred_locale' => $preferredLocale,
         ]);
         $user->role = 'user';
         $user->is_active = true;

@@ -27,6 +27,8 @@ class AgendaController extends Controller
                 'address' => $l->address,
                 'google_maps_url' => $l->google_maps_url,
                 'notes' => $l->notes,
+                'lat' => $l->lat,
+                'lng' => $l->lng,
                 'is_active' => (bool) $l->is_active,
             ])
             ->values();
@@ -68,6 +70,8 @@ class AgendaController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
             'google_maps_url' => ['nullable', 'string', 'max:2048'],
             'notes' => ['nullable', 'string'],
+            'lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -79,6 +83,8 @@ class AgendaController extends Controller
             'address' => $data['address'] ?? null,
             'google_maps_url' => $this->cleanLooseText($data['google_maps_url'] ?? null),
             'notes' => $data['notes'] ?? null,
+            'lat' => isset($data['lat']) ? (float) $data['lat'] : null,
+            'lng' => isset($data['lng']) ? (float) $data['lng'] : null,
             'is_active' => (bool) ($data['is_active'] ?? true),
         ]);
         $loc->save();
@@ -96,6 +102,8 @@ class AgendaController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
             'google_maps_url' => ['nullable', 'string', 'max:2048'],
             'notes' => ['nullable', 'string'],
+            'lat' => ['nullable', 'numeric', 'between:-90,90'],
+            'lng' => ['nullable', 'numeric', 'between:-180,180'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -111,6 +119,8 @@ class AgendaController extends Controller
             'address' => $data['address'] ?? null,
             'google_maps_url' => $this->cleanLooseText($data['google_maps_url'] ?? null),
             'notes' => $data['notes'] ?? null,
+            'lat' => isset($data['lat']) ? (float) $data['lat'] : null,
+            'lng' => isset($data['lng']) ? (float) $data['lng'] : null,
             'is_active' => (bool) ($data['is_active'] ?? true),
         ])->save();
 

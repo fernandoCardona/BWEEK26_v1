@@ -12,11 +12,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/stripe',
+            'webhooks/paypal',
+        ]);
+
         $middleware->web(append: [
             \Illuminate\Foundation\Http\Middleware\TrimStrings::class,
             \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
-            \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\LocaleMiddleware::class,
+            \App\Http\Middleware\HandleInertiaRequests::class,
             \App\Http\Middleware\EnsureActiveUser::class,
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);

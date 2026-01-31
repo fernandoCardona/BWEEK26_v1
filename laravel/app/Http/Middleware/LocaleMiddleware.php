@@ -33,33 +33,49 @@ class LocaleMiddleware
 
     private function getPreferredLocale(Request $request): string
     {
+        $supported = ['es', 'ca', 'en', 'fr', 'it', 'de'];
+        $fallback = 'en';
+
         // 1. URL parameter
         if ($request->has('lang')) {
-            return $request->lang;
+            $lang = strtolower((string) $request->get('lang'));
+            if (in_array($lang, $supported, true)) {
+                return $lang;
+            }
         }
 
         // 2. Session
         if (session()->has('app_locale')) {
-            return session('app_locale');
+            $lang = strtolower((string) session('app_locale'));
+            if (in_array($lang, $supported, true)) {
+                return $lang;
+            }
         }
 
         // 3. User preference
         if ($request->user() && $request->user()->preferred_locale) {
-            return $request->user()->preferred_locale;
+            $lang = strtolower((string) $request->user()->preferred_locale);
+            if (in_array($lang, $supported, true)) {
+                return $lang;
+            }
         }
 
         // 4. Cookie
         if ($request->hasCookie('app_locale')) {
-            return $request->cookie('app_locale');
+            $lang = strtolower((string) $request->cookie('app_locale'));
+            if (in_array($lang, $supported, true)) {
+                return $lang;
+            }
         }
 
         // 5. Browser header
-        $browserLocale = substr($request->server('HTTP_ACCEPT_LANGUAGE'), 0, 2);
-        if (in_array($browserLocale, ['es', 'ca', 'en', 'fr', 'de'])) {
-            return $browserLocale;
+        $browser = $request->getPreferredLanguage($supported);
+        if ($browser && in_array($browser, $supported, true)) {
+            return $browser;
         }
 
         // 6. Default
-        return config('app.locale');
+        $default = strtolower((string) config('app.locale', $fallback));
+        return in_array($default, $supported, true) ? $default : $fallback;
     }
 }

@@ -140,6 +140,8 @@ export default function Index({ locations = [], templates = [], can }) {
     address: '',
     google_maps_url: '',
     notes: '',
+    lat: '',
+    lng: '',
     is_active: true,
   });
 
@@ -159,6 +161,8 @@ export default function Index({ locations = [], templates = [], can }) {
         address: l.address ?? '',
         google_maps_url: l.google_maps_url ?? '',
         notes: l.notes ?? '',
+        lat: l.lat ?? '',
+        lng: l.lng ?? '',
         is_active: l.is_active ?? true,
       };
     }
@@ -229,6 +233,8 @@ export default function Index({ locations = [], templates = [], can }) {
               <Field label="Localidad" value={locationCreate.data.location} onChange={(e) => locationCreate.setData('location', e.target.value)} placeholder="Sitges, Barcelona, España" />
               <Field label="Dirección" value={locationCreate.data.address} onChange={(e) => locationCreate.setData('address', e.target.value)} />
               <Field label="Google Maps URL" value={locationCreate.data.google_maps_url} onChange={(e) => locationCreate.setData('google_maps_url', e.target.value)} placeholder="https://..." />
+              <Field label="Lat" value={locationCreate.data.lat} onChange={(e) => locationCreate.setData('lat', e.target.value)} placeholder="41.235..." />
+              <Field label="Lng" value={locationCreate.data.lng} onChange={(e) => locationCreate.setData('lng', e.target.value)} placeholder="1.810..." />
               <div className="md:col-span-2">
                 <Textarea label="Notas" value={locationCreate.data.notes} onChange={(e) => locationCreate.setData('notes', e.target.value)} rows={2} />
               </div>
@@ -280,6 +286,8 @@ export default function Index({ locations = [], templates = [], can }) {
                       <Field label="Localidad" value={ed.location ?? ''} onChange={(e) => setLocationEdits((p) => ({ ...p, [l.id]: { ...ed, location: e.target.value } }))} />
                       <Field label="Dirección" value={ed.address ?? ''} onChange={(e) => setLocationEdits((p) => ({ ...p, [l.id]: { ...ed, address: e.target.value } }))} />
                       <Field label="Google Maps URL" value={ed.google_maps_url ?? ''} onChange={(e) => setLocationEdits((p) => ({ ...p, [l.id]: { ...ed, google_maps_url: e.target.value } }))} />
+                      <Field label="Lat" value={ed.lat ?? ''} onChange={(e) => setLocationEdits((p) => ({ ...p, [l.id]: { ...ed, lat: e.target.value } }))} placeholder="41.235..." />
+                      <Field label="Lng" value={ed.lng ?? ''} onChange={(e) => setLocationEdits((p) => ({ ...p, [l.id]: { ...ed, lng: e.target.value } }))} placeholder="1.810..." />
                       <div className="md:col-span-2">
                         <Textarea label="Notas" value={ed.notes ?? ''} onChange={(e) => setLocationEdits((p) => ({ ...p, [l.id]: { ...ed, notes: e.target.value } }))} rows={2} />
                       </div>
