@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
 use App\Models\Event;
 use App\Models\Product;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
@@ -15,36 +15,43 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $fixedPassword = (string) env('BSW_FIXED_USERS_PASSWORD', 'c4c4v4c4');
+        $fixedPassword = (string) env('BSW_FIXED_USERS_PASSWORD', 'changeme_fixed_users_password');
 
         // Required Users
-        User::updateOrCreate(
-            ['email' => 'fernandocardonatoro@gmail.com'],
+        $fixedUsers = [
             [
-                'name' => 'Fernando Cardona',
-                'password' => Hash::make($fixedPassword),
+                'email' => (string) env('BSW_FIXED_SUPERADMIN_EMAIL_1', 'superadmin@example.com'),
+                'name' => 'Super Admin',
                 'role' => 'super_admin',
-                'preferred_locale' => 'es',
-            ]
-        );
-        User::updateOrCreate(
-            ['email' => 'fernandocardonatoro2@gmail.com'],
+            ],
             [
-                'name' => 'Fernando Cardona (Admin)',
-                'password' => Hash::make($fixedPassword),
+                'email' => (string) env('BSW_FIXED_ADMIN_EMAIL', 'admin@example.com'),
+                'name' => 'Admin',
                 'role' => 'admin',
-                'preferred_locale' => 'es',
-            ]
-        );
-        User::updateOrCreate(
-            ['email' => 'fct.registro@gmail.com'],
+            ],
             [
-                'name' => 'FCT Registro',
-                'password' => Hash::make($fixedPassword),
+                'email' => (string) env('BSW_FIXED_USER_EMAIL', 'user@example.com'),
+                'name' => 'User',
                 'role' => 'user',
-                'preferred_locale' => 'es',
-            ]
-        );
+            ],
+        ];
+
+        foreach ($fixedUsers as $u) {
+            $email = strtolower(trim((string) ($u['email'] ?? '')));
+            if ($email === '') {
+                continue;
+            }
+
+            User::updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => (string) ($u['name'] ?? 'User'),
+                    'password' => Hash::make($fixedPassword),
+                    'role' => (string) ($u['role'] ?? 'user'),
+                    'preferred_locale' => 'es',
+                ]
+            );
+        }
 
         // Demo Events
         Event::create([

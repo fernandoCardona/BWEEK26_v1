@@ -22,6 +22,7 @@
 /laravel/.env.*
 !/laravel/.env.example
 
+/nginx-proxy-manager/data/
 /nginx-proxy-manager/data/database.sqlite
 
 /postgres/backups/

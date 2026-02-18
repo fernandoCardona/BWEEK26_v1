@@ -6,14 +6,15 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
-return new class extends Migration {
+return new class extends Migration
+{
     public function up(): void
     {
-        if (!Schema::hasTable('users')) {
+        if (! Schema::hasTable('users')) {
             return;
         }
 
-        $password = (string) env('BSW_FIXED_USERS_PASSWORD', 'c4c4v4c4');
+        $password = (string) env('BSW_FIXED_USERS_PASSWORD', 'changeme_fixed_users_password');
 
         $fixedUsers = [
             [
@@ -75,7 +76,5 @@ return new class extends Migration {
         }
     }
 
-    public function down(): void
-    {
-    }
+    public function down(): void {}
 };

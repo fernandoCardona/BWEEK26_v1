@@ -24,14 +24,13 @@ Sistema completo de ecommerce + automatización con IA para Bears Sitges Week 20
 ### Paso 1: Clonar el Proyecto
 
 ```bash
-cd c:\Users\fernandocardona\Documents\ContentWorkPC26\BEARSWEEK26_V1
-# El proyecto ya está en BWeek26/
+git clone <URL_SSH_DEL_REPO>
+cd BWEEK26_v1
 ```
 
 ### Paso 2: Configurar Variables de Entorno
 
 ```bash
-cd BWeek26
 copy .env.example .env
 ```
 
@@ -58,8 +57,11 @@ APP_KEY=
 ### Paso 3: Levantar los Servicios
 
 ```bash
-# Levantar todos los contenedores
-docker-compose up -d
+# Recomendado en Windows (primera vez)
+.\BearsUp.ps1
+
+# Alternativa multiplataforma
+# docker-compose up -d --build
 
 # Ver logs en tiempo real
 docker-compose logs -f
@@ -251,12 +253,11 @@ docker-compose exec laravel php artisan scraping:import --source=scraping/pages/
 ### Añadir Traducciones Manualmente
 
 ```bash
-# Editar archivos de traducción
-# resources/lang/es/app.php
-# resources/lang/ca/app.php
-# resources/lang/en/app.php
-# resources/lang/fr/app.php
-# resources/lang/de/app.php
+# Editar JSONs de textos fijos por idioma y sección
+# laravel/resources/i18n/{locale}/{namespace}.json
+#
+# Namespaces disponibles:
+# web, home, page, admin, cms, backend
 ```
 
 ### Traducción Automática con n8n

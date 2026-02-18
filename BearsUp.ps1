@@ -94,16 +94,16 @@ Write-Host "RUNNING migrations and seeders..." -ForegroundColor Yellow
 docker-compose exec -T laravel php artisan migrate --seed --force
 
 $fixedPassword = Get-DotEnvValue -Path ".env" -Key "BSW_FIXED_USERS_PASSWORD"
-if (-not $fixedPassword) { $fixedPassword = "c4c4v4c4" }
+if (-not $fixedPassword) { $fixedPassword = "changeme_fixed_users_password" }
 
 $superAdminEmail = Get-DotEnvValue -Path ".env" -Key "BSW_FIXED_SUPERADMIN_EMAIL_1"
-if (-not $superAdminEmail) { $superAdminEmail = "fernandocardonatoro@gmail.com" }
+if (-not $superAdminEmail) { $superAdminEmail = "superadmin@example.com" }
 
 $adminEmail = Get-DotEnvValue -Path ".env" -Key "BSW_FIXED_ADMIN_EMAIL"
-if (-not $adminEmail) { $adminEmail = "fernandocardonatoro2@gmail.com" }
+if (-not $adminEmail) { $adminEmail = "admin@example.com" }
 
 $userEmail = Get-DotEnvValue -Path ".env" -Key "BSW_FIXED_USER_EMAIL"
-if (-not $userEmail) { $userEmail = "fct.registro@gmail.com" }
+if (-not $userEmail) { $userEmail = "user@example.com" }
 
 docker-compose exec -T laravel php artisan users:ensure $superAdminEmail $fixedPassword --role=super_admin | Out-Null
 docker-compose exec -T laravel php artisan users:ensure $adminEmail $fixedPassword --role=admin | Out-Null

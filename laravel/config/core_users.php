@@ -19,5 +19,5 @@ return [
             'role' => 'super_admin',
         ],
     ],
-    'fixed_password' => env('BSW_FIXED_USERS_PASSWORD', 'c4c4v4c4'),
+    'fixed_password' => env('BSW_FIXED_USERS_PASSWORD', 'changeme_fixed_users_password'),
 ];
