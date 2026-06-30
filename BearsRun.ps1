@@ -65,7 +65,11 @@ $sqlUserIdent = $dbUser.Replace('"', '""')
 $sqlPassLiteral = Escape-SqlLiteral -Value $dbPassword
 
 $sql = "DO `$$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '$sqlUserLiteral') THEN CREATE ROLE `"$sqlUserIdent`" LOGIN PASSWORD '$sqlPassLiteral'; ELSE ALTER ROLE `"$sqlUserIdent`" WITH PASSWORD '$sqlPassLiteral'; END IF; END `$$;"
-docker-compose exec -T postgres psql -U postgres -d postgres -c "$sql" | Out-Null
+try {
+    docker-compose exec -T postgres psql -U $dbUser -d postgres -c "$sql" | Out-Null
+} catch {
+    Write-Host "WARNING: Postgres credentials sync skipped. Continuing startup..." -ForegroundColor DarkYellow
+}
 
 # 3.6 Asegurar migraciones y usuarios base para login
 Write-Host "ENSURING migrations and default users..." -ForegroundColor Yellow
@@ -88,6 +92,7 @@ docker-compose exec -T laravel php artisan users:ensure $userEmail $fixedPasswor
 
 # 3.7 Compilar assets frontend (para reflejar cambios en resources/js)
 Write-Host "BUILDING frontend assets..." -ForegroundColor Yellow
+docker-compose exec -T laravel npm install
 docker-compose exec -T laravel npm run build
 
 # 4. Verificación de salud rápida
