@@ -5,24 +5,23 @@
     "keywords": ["laravel", "framework"],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
-        "inertiajs/inertia-laravel": "^2.0",
-        "laravel/framework": "^12.0",
-        "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.10",
-        "spatie/laravel-translatable": "^6.9",
+        "php": "^8.3",
+        "inertiajs/inertia-laravel": "^3.1",
+        "laravel/framework": "^13.0",
+        "laravel/tinker": "^3.0",
+        "spatie/laravel-translatable": "^6.14",
         "tightenco/ziggy": "^2.4",
-        "tymon/jwt-auth": "^2.1"
+        "tymon/jwt-auth": "^2.3"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
-        "laravel/browser-kit-testing": "^7.0",
+        "laravel/browser-kit-testing": "^7.2",
         "laravel/pint": "^1.13",
-        "laravel/sail": "^1.26",
+        "laravel/sail": "^1.63",
         "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.1",
-        "phpunit/phpunit": "^11.0",
-        "spatie/laravel-ignition": "^2.4"
+        "nunomaduro/collision": "^8.9",
+        "phpunit/phpunit": "^12.0",
+        "spatie/laravel-ignition": "^2.12"
     },
     "autoload": {
         "psr-4": {
@@ -55,7 +54,7 @@
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "platform": {
-            "php": "8.2.0"
+            "php": "8.3.0"
         },
         "sort-packages": true,
         "allow-plugins": {

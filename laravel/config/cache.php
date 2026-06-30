@@ -37,6 +37,7 @@ return [
         'array' => [
             'driver' => 'array',
             'serialize' => false,
+            'serializable_classes' => [],
         ],
 
         'session' => [
@@ -50,12 +51,14 @@ return [
             'table' => env('DB_CACHE_TABLE', 'cache'),
             'lock_connection' => env('DB_CACHE_LOCK_CONNECTION'),
             'lock_table' => env('DB_CACHE_LOCK_TABLE'),
+            'serializable_classes' => [],
         ],
 
         'file' => [
             'driver' => 'file',
             'path' => storage_path('framework/cache/data'),
             'lock_path' => storage_path('framework/cache/data'),
+            'serializable_classes' => [],
         ],
 
         'memcached' => [
@@ -75,12 +78,14 @@ return [
                     'weight' => 100,
                 ],
             ],
+            'serializable_classes' => [],
         ],
 
         'redis' => [
             'driver' => 'redis',
             'connection' => env('REDIS_CACHE_CONNECTION', 'cache'),
             'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'default'),
+            'serializable_classes' => [],
         ],
 
         'dynamodb' => [
@@ -90,10 +95,12 @@ return [
             'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
             'table' => env('DYNAMODB_CACHE_TABLE', 'cache'),
             'endpoint' => env('DYNAMODB_ENDPOINT'),
+            'serializable_classes' => [],
         ],
 
         'octane' => [
             'driver' => 'octane',
+            'serializable_classes' => [],
         ],
 
         'failover' => [
@@ -102,6 +109,7 @@ return [
                 'database',
                 'array',
             ],
+            'serializable_classes' => [],
         ],
 
     ],
