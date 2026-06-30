@@ -17,8 +17,7 @@ class OrderStatusController extends Controller
             abort(401);
         }
 
-        $role = (string) ($user->role ?? '');
-        $isPrivileged = in_array($role, ['admin', 'super_admin', 'super_user'], true);
+        $isPrivileged = $user->canManageTransactions() || $user->canAccessAdmin();
         if (!$isPrivileged && $transaction->user_id !== $user->id) {
             abort(403);
         }

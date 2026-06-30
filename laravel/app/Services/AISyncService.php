@@ -31,7 +31,14 @@ class AISyncService
     private function triggerN8nSync(KnowledgeSnippet $snippet): void
     {
         try {
-            $response = Http::post(config('services.n8n.sync_webhook'), [
+            $webhook = config('services.n8n.sync_webhook');
+
+            if (!is_string($webhook) || trim($webhook) === '') {
+                Log::warning('Skipping n8n sync because services.n8n.sync_webhook is not configured.');
+                return;
+            }
+
+            $response = Http::post($webhook, [
                 'id' => $snippet->id,
                 'title' => $snippet->title,
                 'content' => $snippet->content,

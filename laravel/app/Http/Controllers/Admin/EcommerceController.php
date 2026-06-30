@@ -195,7 +195,7 @@ class EcommerceController extends Controller
     {
         $this->authorizeManage($request);
         if (!Schema::hasTable('ticket_templates')) {
-            if (app()->environment('local') && (string) ($request->user()?->role ?? '') === 'super_admin') {
+            if (app()->environment('local') && ($request->user()?->canManageUserRoles() ?? false)) {
                 try {
                     Artisan::call('migrate', ['--force' => true]);
                 } catch (\Throwable $e) {
@@ -514,12 +514,11 @@ class EcommerceController extends Controller
 
     private function canManage(Request $request): bool
     {
-        $role = (string) ($request->user()?->role ?? '');
-        return in_array($role, ['admin', 'super_admin'], true);
+        return (bool) $request->user()?->canManageEcommerce();
     }
 
     private function canDelete(Request $request): bool
     {
-        return (string) ($request->user()?->role ?? '') === 'super_admin';
+        return (bool) $request->user()?->isSuperAdmin();
     }
 }

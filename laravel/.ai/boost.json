@@ -1,0 +1,32 @@
+{
+    "agents": [
+        "trae",
+        "cursor",
+        "claude-code"
+    ],
+    "packages": [
+        "laravel",
+        "inertia-laravel",
+        "inertia-react",
+        "tailwindcss",
+        "php",
+        "pint"
+    ],
+    "guidelines": true,
+    "skills": [
+        "tinker",
+        "list-routes",
+        "database-queries",
+        "database-schema",
+        "last-error",
+        "artisan-commands",
+        "application-info",
+        "search-docs",
+        "get-config",
+        "read-logs",
+        "get-absolute-url",
+        "mcp-database-connect"
+    ],
+    "mcp": true,
+    "sail": false
+}

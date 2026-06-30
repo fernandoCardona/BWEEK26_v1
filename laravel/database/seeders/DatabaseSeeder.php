@@ -42,15 +42,17 @@ class DatabaseSeeder extends Seeder
                 continue;
             }
 
-            User::updateOrCreate(
+            $user = User::updateOrCreate(
                 ['email' => $email],
                 [
                     'name' => (string) ($u['name'] ?? 'User'),
                     'password' => Hash::make($fixedPassword),
-                    'role' => (string) ($u['role'] ?? 'user'),
+                    'legacy_role' => User::normalizeRoleName((string) ($u['role'] ?? 'user')),
                     'preferred_locale' => 'es',
                 ]
             );
+
+            $user->syncAppRole((string) ($u['role'] ?? 'user'));
         }
 
         // Demo Events

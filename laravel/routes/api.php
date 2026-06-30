@@ -22,7 +22,7 @@ Route::prefix('v1/chatbot')->group(function () {
                 'id' => $user?->id,
                 'name' => $user?->name,
                 'email' => $user?->email,
-                'role' => $user?->role,
+                'role' => $user?->roleName(),
                 'locale' => $user?->preferred_locale,
             ];
         });

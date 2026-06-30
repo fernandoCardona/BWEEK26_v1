@@ -41,4 +41,9 @@ return [
         'secret' => env('PAYPAL_SECRET'),
     ],
 
+    'n8n' => [
+        'api_url' => env('N8N_API_URL'),
+        'sync_webhook' => env('N8N_SYNC_WEBHOOK'),
+    ],
+
 ];

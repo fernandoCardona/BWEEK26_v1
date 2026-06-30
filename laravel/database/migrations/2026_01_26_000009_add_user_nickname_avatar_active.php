@@ -15,7 +15,7 @@ return new class extends Migration {
                 $table->string('avatar_path')->nullable()->after('nickname');
             }
             if (!Schema::hasColumn('users', 'is_active')) {
-                $table->boolean('is_active')->default(true)->after('role');
+                $table->boolean('is_active')->default(true)->after('legacy_role');
             }
         });
     }
@@ -31,4 +31,3 @@ return new class extends Migration {
         });
     }
 };
-

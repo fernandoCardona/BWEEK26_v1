@@ -4,14 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\Event;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AdminEventsCrudTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     public function test_admin_can_update_event_and_persist_logo(): void
     {
@@ -23,7 +23,8 @@ class AdminEventsCrudTest extends TestCase
             'email' => 'admin2@example.com',
             'password' => 'password1234',
         ]);
-        $admin->forceFill(['role' => 'super_admin', 'is_active' => true])->save();
+        $admin->forceFill(['legacy_role' => 'super_admin', 'is_active' => true])->save();
+        $admin->syncAppRole('super_admin');
 
         $event = new Event();
         $event->fill([
@@ -72,7 +73,8 @@ class AdminEventsCrudTest extends TestCase
             'email' => 'admin3@example.com',
             'password' => 'password1234',
         ]);
-        $admin->forceFill(['role' => 'super_admin', 'is_active' => true])->save();
+        $admin->forceFill(['legacy_role' => 'super_admin', 'is_active' => true])->save();
+        $admin->syncAppRole('super_admin');
 
         $event = new Event();
         $event->fill([
@@ -123,7 +125,8 @@ class AdminEventsCrudTest extends TestCase
             'email' => 'admin4@example.com',
             'password' => 'password1234',
         ]);
-        $admin->forceFill(['role' => 'super_admin', 'is_active' => true])->save();
+        $admin->forceFill(['legacy_role' => 'super_admin', 'is_active' => true])->save();
+        $admin->syncAppRole('super_admin');
 
         $event = new Event();
         $event->fill([
@@ -181,7 +184,8 @@ class AdminEventsCrudTest extends TestCase
             'email' => 'admin5@example.com',
             'password' => 'password1234',
         ]);
-        $admin->forceFill(['role' => 'super_admin', 'is_active' => true])->save();
+        $admin->forceFill(['legacy_role' => 'super_admin', 'is_active' => true])->save();
+        $admin->syncAppRole('super_admin');
 
         $event = new Event();
         $event->fill([

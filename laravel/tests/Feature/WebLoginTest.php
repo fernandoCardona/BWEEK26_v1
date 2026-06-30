@@ -3,12 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
 class WebLoginTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     public function test_user_can_login_with_correct_credentials(): void
     {
@@ -19,9 +19,10 @@ class WebLoginTest extends TestCase
             'password' => 'password1234',
         ]);
         $user->forceFill([
-            'role' => 'user',
+            'legacy_role' => 'user',
             'is_active' => true,
         ])->save();
+        $user->syncAppRole('user');
 
         $response = $this->withSession(['_token' => 'test-token'])->post('/login', [
             '_token' => 'test-token',
@@ -33,4 +34,3 @@ class WebLoginTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 }
-

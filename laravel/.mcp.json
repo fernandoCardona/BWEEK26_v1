@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "php",
+            "args": [
+                "artisan",
+                "boost:mcp"
+            ],
+            "cwd": "c:\\Users\\fernandocardona\\Documents\\ContentWorkPC26\\BWEEK26\\BWEEK26_v1\\laravel"
+        }
+    }
+}

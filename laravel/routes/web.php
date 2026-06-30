@@ -15,8 +15,6 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\Admin\EcommerceController as AdminEcommerceController;
 use App\Http\Controllers\Admin\UsersController as AdminUsersController;
 use App\Http\Controllers\Admin\ProductCategoriesController as AdminProductCategoriesController;
-use App\Http\Middleware\EnsureAdmin;
-use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Controllers\User\DashboardController as UserDashboardController;
 use App\Http\Controllers\User\StoreController as UserStoreController;
 use App\Http\Controllers\WebsiteMenuController;
@@ -91,7 +89,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/dashboard', function () {
         $user = request()->user();
-        if ($user && in_array($user->role, ['super_admin', 'admin'], true)) {
+        if ($user && $user->isAdminLike()) {
             return redirect()->route('admin.dashboard');
         }
         return redirect()->route('user.dashboard');
@@ -104,7 +102,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/me/store', [UserStoreController::class, 'index'])->name('user.store');
 });
 
-Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function () {
+Route::middleware(['auth', 'permission:admin.access'])->prefix('admin')->group(function () {
     Route::get('/dashboard', AdminDashboardController::class)->name('admin.dashboard');
     Route::get('/ecommerce', [AdminEcommerceController::class, 'index'])->name('admin.ecommerce.index');
     Route::get('/ecommerce/warehouse', [AdminEcommerceController::class, 'warehouse'])->name('admin.ecommerce.warehouse');
@@ -136,7 +134,7 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     Route::patch('/events/{event}/days/{day}', [AdminEventsController::class, 'updateDay'])->name('admin.events.days.update');
     Route::patch('/events/{event}/days/{day}/move', [AdminEventsController::class, 'moveDay'])->name('admin.events.days.move');
     Route::delete('/events/{event}/subevents/{subevent}', [AdminEventsController::class, 'destroySubevent'])->name('admin.events.subevents.destroy');
-    Route::middleware([EnsureSuperAdmin::class])->group(function () {
+    Route::middleware(['role:super_admin'])->group(function () {
         Route::get('/events/create', [AdminEventsController::class, 'create'])->name('admin.events.create');
         Route::post('/events', [AdminEventsController::class, 'store'])->name('admin.events.store');
         Route::delete('/events/{event}', [AdminEventsController::class, 'destroy'])->name('admin.events.destroy');
@@ -178,14 +176,14 @@ Route::middleware(['auth', EnsureAdmin::class])->prefix('admin')->group(function
     Route::delete('/users/{user}', [AdminUsersController::class, 'destroy'])->name('admin.users.destroy');
     Route::patch('/users/{user}/tickets/{ticket}', [AdminUsersController::class, 'updateTicket'])->name('admin.users.tickets.update');
     Route::delete('/users/{user}/tickets/{ticket}', [AdminUsersController::class, 'destroyTicket'])->name('admin.users.tickets.destroy');
-    Route::middleware([EnsureSuperAdmin::class])->group(function () {
+    Route::middleware(['permission:users.role.manage'])->group(function () {
         Route::patch('/users/{user}/role', [AdminUsersController::class, 'updateRole'])->name('admin.users.role.update');
     });
     Route::get('/pages', [AdminPagesController::class, 'index'])->name('admin.pages.index');
     Route::get('/pages/{page}', [AdminPagesController::class, 'edit'])->name('admin.pages.edit');
     Route::patch('/pages/{page}', [AdminPagesController::class, 'update'])->name('admin.pages.update');
     Route::patch('/pages/{page}/bulk', [AdminPagesController::class, 'bulkUpdate'])->name('admin.pages.bulk');
-    Route::middleware([EnsureSuperAdmin::class])->group(function () {
+    Route::middleware(['role:super_admin'])->group(function () {
         Route::post('/pages/seed', [AdminPagesController::class, 'seed'])->name('admin.pages.seed');
         Route::post('/pages/{page}/init-home', [AdminPagesController::class, 'initHome'])->name('admin.pages.init_home');
         Route::post('/pages/{page}/init-template', [AdminPagesController::class, 'initTemplate'])->name('admin.pages.init_template');

@@ -47,8 +47,8 @@ class AgendaController extends Controller
             ])
             ->values();
 
-        $canManage = in_array((string) ($request->user()?->role ?? ''), ['admin', 'super_admin'], true);
-        $canDelete = (string) ($request->user()?->role ?? '') === 'super_admin';
+        $canManage = (bool) $request->user()?->canManageAgenda();
+        $canDelete = (bool) $request->user()?->isSuperAdmin();
 
         return Inertia::render('Admin/Agenda/Index', [
             'locations' => $locations,
@@ -204,16 +204,14 @@ class AgendaController extends Controller
 
     private function authorizeManage(Request $request): void
     {
-        $role = (string) ($request->user()?->role ?? '');
-        if (!in_array($role, ['admin', 'super_admin'], true)) {
+        if (!($request->user()?->canManageAgenda() ?? false)) {
             abort(403);
         }
     }
 
     private function authorizeDelete(Request $request): void
     {
-        $role = (string) ($request->user()?->role ?? '');
-        if ($role !== 'super_admin') {
+        if (!($request->user()?->isSuperAdmin() ?? false)) {
             abort(403);
         }
     }

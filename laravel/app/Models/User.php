@@ -6,15 +6,20 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Tymon\JWTAuth\Contracts\JWTSubject;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\Traits\HasRoles;
+use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, HasRoles;
+
+    protected string $guard_name = 'web';
 
     protected $keyType = 'string';
     public $incrementing = false;
@@ -49,6 +54,7 @@ class User extends Authenticatable implements JWTSubject
         'newsletter_subscribed',
         'terms_accepted_at',
         'last_login_at',
+        'legacy_role',
     ];
 
     /**
@@ -104,10 +110,15 @@ class User extends Authenticatable implements JWTSubject
     protected static function boot()
     {
         parent::boot();
+
         static::creating(function ($model) {
             if (empty($model->id)) {
                 $model->id = (string) Str::uuid();
             }
+        });
+
+        static::saved(function (self $user) {
+            $user->synchronizeAppRole();
         });
     }
 
@@ -129,9 +140,200 @@ class User extends Authenticatable implements JWTSubject
     public function getJWTCustomClaims()
     {
         return [
-            'role' => $this->role,
-            'name' => $this->name
+            'role' => $this->roleName(),
+            'name' => $this->name,
         ];
+    }
+
+    public static function normalizeRoleName(?string $role): string
+    {
+        $normalized = strtolower(trim((string) $role));
+
+        return match ($normalized) {
+            'super_admin' => 'super_admin',
+            'admin', 'super_user' => 'admin',
+            default => 'user',
+        };
+    }
+
+    public function roleName(): string
+    {
+        if (self::permissionTablesAvailable()) {
+            $loadedRoles = $this->relationLoaded('roles')
+                ? $this->roles->pluck('name')->filter()
+                : collect();
+
+            if ($loadedRoles->isEmpty() && $this->exists) {
+                $loadedRoles = $this->roles()->pluck('name');
+            }
+
+            $role = $loadedRoles
+                ->map(fn ($name) => self::normalizeRoleName((string) $name))
+                ->sortByDesc(fn (string $name) => match ($name) {
+                    'super_admin' => 3,
+                    'admin' => 2,
+                    default => 1,
+                })
+                ->first();
+
+            if (is_string($role) && $role !== '') {
+                return $role;
+            }
+        }
+
+        return self::normalizeRoleName($this->legacy_role ?? 'user');
+    }
+
+    public function hasAppRole(string $role): bool
+    {
+        return $this->roleName() === self::normalizeRoleName($role);
+    }
+
+    public function hasAnyAppRole(array $roles): bool
+    {
+        $normalizedRoles = array_values(array_unique(array_map(
+            fn ($role) => self::normalizeRoleName((string) $role),
+            $roles
+        )));
+
+        return in_array($this->roleName(), $normalizedRoles, true);
+    }
+
+    public function isAdminLike(): bool
+    {
+        return $this->canAccessAdmin();
+    }
+
+    public function isSuperAdmin(): bool
+    {
+        return $this->hasAppRole('super_admin');
+    }
+
+    public function canAccessAdmin(): bool
+    {
+        return $this->canUsePermission('admin.access', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function canManageUsers(): bool
+    {
+        return $this->canUsePermission('users.manage', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function canManageUserRoles(): bool
+    {
+        return $this->canUsePermission('users.role.manage', fn () => $this->isSuperAdmin());
+    }
+
+    public function canViewUsers(): bool
+    {
+        return $this->canUsePermission('users.view', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function canManageProducts(): bool
+    {
+        return $this->canUsePermission('products.manage', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function canManageEvents(): bool
+    {
+        return $this->canUsePermission('events.manage', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function canManageAgenda(): bool
+    {
+        return $this->canUsePermission('agenda.manage', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function canManageEcommerce(): bool
+    {
+        return $this->canUsePermission('ecommerce.manage', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function canManageTransactions(): bool
+    {
+        return $this->canUsePermission('transactions.manage', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function canManagePages(): bool
+    {
+        return $this->canUsePermission('pages.manage', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function canManageSettings(): bool
+    {
+        return $this->canUsePermission('settings.manage', fn () => $this->hasAnyAppRole(['admin', 'super_admin']));
+    }
+
+    public function syncAppRole(?string $role = null): void
+    {
+        $normalizedRole = self::normalizeRoleName($role ?? $this->legacy_role ?? 'user');
+
+        if (($this->legacy_role ?? null) !== $normalizedRole) {
+            $this->forceFill(['legacy_role' => $normalizedRole])->saveQuietly();
+        }
+
+        $this->synchronizeAppRole();
+    }
+
+    private function synchronizeAppRole(): void
+    {
+        $normalizedRole = self::normalizeRoleName($this->legacy_role ?? 'user');
+
+        if (($this->legacy_role ?? null) !== $normalizedRole) {
+            $this->forceFill(['legacy_role' => $normalizedRole])->saveQuietly();
+        }
+
+        if (!self::permissionTablesAvailable() || !$this->exists) {
+            return;
+        }
+
+        $guardName = method_exists($this, 'getDefaultGuardName')
+            ? $this->getDefaultGuardName()
+            : $this->guard_name;
+
+        $roleExists = Role::query()
+            ->where('name', $normalizedRole)
+            ->where('guard_name', $guardName)
+            ->exists();
+
+        if (!$roleExists) {
+            return;
+        }
+
+        $currentRoles = $this->roles()
+            ->pluck('name')
+            ->map(fn ($name) => self::normalizeRoleName((string) $name))
+            ->unique()
+            ->values();
+
+        if ($currentRoles->count() === 1 && $currentRoles->first() === $normalizedRole) {
+            return;
+        }
+
+        $this->syncRoles([$normalizedRole]);
+        $this->unsetRelation('roles');
+    }
+
+    private static function permissionTablesAvailable(): bool
+    {
+        try {
+            return Schema::hasTable('roles') && Schema::hasTable('model_has_roles');
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function canUsePermission(string $permission, callable $fallback): bool
+    {
+        if (!self::permissionTablesAvailable()) {
+            return (bool) $fallback();
+        }
+
+        try {
+            return $this->can($permission);
+        } catch (\Throwable $e) {
+            return (bool) $fallback();
+        }
     }
 
     public function getAvatarUrlAttribute()

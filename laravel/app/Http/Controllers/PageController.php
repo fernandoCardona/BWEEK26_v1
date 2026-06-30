@@ -28,7 +28,7 @@ class PageController extends Controller
         try {
             $q = Page::query()->where('slug', $slug);
             $user = request()->user();
-            $isAdmin = $user && in_array((string) $user->role, ['admin', 'super_admin', 'super_user'], true);
+            $isAdmin = $user && $user->canAccessAdmin();
 
             if (!$isAdmin || !request()->boolean('preview')) {
                 $q->where('is_published', true);

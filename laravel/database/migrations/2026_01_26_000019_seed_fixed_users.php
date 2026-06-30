@@ -61,7 +61,7 @@ return new class extends Migration
                 'telegram_username' => null,
                 'password' => Hash::make($password),
                 'email_verified_at' => now(),
-                'role' => $u['role'],
+                'legacy_role' => \App\Models\User::normalizeRoleName((string) $u['role']),
                 'preferred_locale' => 'es',
                 'registration_source' => 'seed_fixed_users',
                 'interests' => null,

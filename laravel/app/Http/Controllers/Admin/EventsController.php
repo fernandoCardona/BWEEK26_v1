@@ -48,13 +48,13 @@ class EventsController extends Controller
                 return $this->mapEvent($event, true);
             });
 
-        $role = $request->user()?->role;
+        $user = $request->user();
 
         return Inertia::render('Admin/Events/Index', [
             'events' => $events,
             'can' => [
-                'create_event' => $role === 'super_admin',
-                'manage_program' => in_array($role, ['super_admin', 'admin'], true),
+                'create_event' => (bool) $user?->isSuperAdmin(),
+                'manage_program' => (bool) $user?->canManageEvents(),
             ],
         ]);
     }
@@ -95,7 +95,7 @@ class EventsController extends Controller
             ->orderByDesc('start_at')
             ->get(['id', 'name']);
 
-        $role = $request->user()?->role;
+        $user = $request->user();
         $agenda = $this->agendaProps();
         $ticketTemplates = $this->ticketTemplatesProps();
 
@@ -106,10 +106,10 @@ class EventsController extends Controller
             'ticketTemplates' => $ticketTemplates,
             'defaults' => null,
             'can' => [
-                'delete' => $role === 'super_admin',
-                'toggle_active' => $role === 'super_admin',
-                'manage_ticket_types' => in_array($role, ['super_admin', 'admin'], true),
-                'manage_program' => in_array($role, ['super_admin', 'admin'], true),
+                'delete' => (bool) $user?->isSuperAdmin(),
+                'toggle_active' => (bool) $user?->isSuperAdmin(),
+                'manage_ticket_types' => (bool) $user?->canManageEvents(),
+                'manage_program' => (bool) $user?->canManageEvents(),
             ],
         ]);
     }
@@ -190,8 +190,7 @@ class EventsController extends Controller
     {
         $data = $this->validateEvent($request, $event);
 
-        $authRole = $request->user()?->role;
-        if ($authRole !== 'super_admin') {
+        if (!($request->user()?->isSuperAdmin() ?? false)) {
             unset($data['is_active'], $data['parent_event_id']);
         }
 
@@ -476,8 +475,7 @@ class EventsController extends Controller
 
     public function attachTicketTemplate(Request $request, Event $event)
     {
-        $role = (string) ($request->user()?->role ?? '');
-        if (!in_array($role, ['admin', 'super_admin'], true)) {
+        if (!($request->user()?->canManageEvents() ?? false)) {
             abort(403);
         }
 

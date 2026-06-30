@@ -33,7 +33,7 @@ class UsersController extends Controller
         $q = $request->string('q');
 
         $users = User::query()
-            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'created_at'])
+            ->select(['id', 'name', 'last_name', 'email', 'phone', 'legacy_role', 'created_at'])
             ->addSelect(DB::raw('coalesce(is_active, true) as is_active'))
             ->when($q->isNotEmpty(), function ($query) use ($q) {
                 $term = '%' . $q->toString() . '%';
@@ -47,7 +47,17 @@ class UsersController extends Controller
             })
             ->orderByDesc('created_at')
             ->paginate(25)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn (User $listedUser) => [
+                'id' => $listedUser->id,
+                'name' => $listedUser->name,
+                'last_name' => $listedUser->last_name,
+                'email' => $listedUser->email,
+                'phone' => $listedUser->phone,
+                'role' => $listedUser->roleName(),
+                'is_active' => (bool) ($listedUser->is_active ?? true),
+                'created_at' => optional($listedUser->created_at)->toISOString(),
+            ]);
 
         return Inertia::render('Admin/Users/Index', [
             'filters' => [
@@ -58,7 +68,7 @@ class UsersController extends Controller
             'selectedTickets' => [],
             'selectedStats' => null,
             'can' => [
-                'update_role' => $request->user()?->role === 'super_admin',
+                'update_role' => (bool) $request->user()?->canManageUserRoles(),
             ],
         ]);
     }
@@ -68,7 +78,7 @@ class UsersController extends Controller
         $q = $request->string('q');
 
         $users = User::query()
-            ->select(['id', 'name', 'last_name', 'email', 'phone', 'role', 'created_at'])
+            ->select(['id', 'name', 'last_name', 'email', 'phone', 'legacy_role', 'created_at'])
             ->addSelect(DB::raw('coalesce(is_active, true) as is_active'))
             ->when($q->isNotEmpty(), function ($query) use ($q) {
                 $term = '%' . $q->toString() . '%';
@@ -82,7 +92,17 @@ class UsersController extends Controller
             })
             ->orderByDesc('created_at')
             ->paginate(25)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn (User $listedUser) => [
+                'id' => $listedUser->id,
+                'name' => $listedUser->name,
+                'last_name' => $listedUser->last_name,
+                'email' => $listedUser->email,
+                'phone' => $listedUser->phone,
+                'role' => $listedUser->roleName(),
+                'is_active' => (bool) ($listedUser->is_active ?? true),
+                'created_at' => optional($listedUser->created_at)->toISOString(),
+            ]);
 
         $ticketsTotal = Ticket::query()->where('user_id', $user->id)->count();
         $ticketsActive = Ticket::query()->where('user_id', $user->id)->where('status', 'active')->count();
@@ -208,7 +228,7 @@ class UsersController extends Controller
                 'avatar_url' => $user->avatar_url,
                 'email' => $user->email,
                 'phone' => $user->phone,
-                'role' => $user->role,
+                'role' => $user->roleName(),
                 'is_active' => (bool) ($user->is_active ?? true),
                 'birth_date' => optional($user->birth_date)->format('Y-m-d'),
                 'gender' => $user->gender,
@@ -231,7 +251,7 @@ class UsersController extends Controller
                 'merch_purchases_total' => 0,
             ],
             'can' => [
-                'update_role' => $request->user()?->role === 'super_admin',
+                'update_role' => (bool) $request->user()?->canManageUserRoles(),
             ],
         ]);
     }
@@ -313,7 +333,7 @@ class UsersController extends Controller
     public function store(Request $request)
     {
         $authUser = $request->user();
-        if (!$authUser || $authUser->role !== 'super_admin') {
+        if (!$authUser || !$authUser->canManageUserRoles()) {
             abort(403);
         }
 
@@ -338,9 +358,10 @@ class UsersController extends Controller
             'password' => Hash::make($tempPassword),
             'email_verified_at' => now(),
         ]);
-        $user->role = $data['role'] ?? 'user';
+        $user->legacy_role = User::normalizeRoleName($data['role'] ?? 'user');
         $user->is_active = true;
         $user->save();
+        $user->syncAppRole($data['role'] ?? 'user');
 
         Password::sendResetLink(['email' => $user->email]);
 
@@ -365,10 +386,14 @@ class UsersController extends Controller
         }
 
         $allowed = false;
-        if ($authUser->role === 'super_admin') {
-            $allowed = in_array($user->role, ['user', 'admin'], true);
-        } elseif ($authUser->role === 'admin') {
-            $allowed = $user->role === 'user';
+        if (!$authUser->canManageUsers()) {
+            abort(403);
+        }
+
+        if ($authUser->isSuperAdmin()) {
+            $allowed = $user->hasAnyAppRole(['user', 'admin']);
+        } elseif ($authUser->hasAppRole('admin')) {
+            $allowed = $user->hasAppRole('user');
         }
         if (!$allowed) {
             abort(403);
@@ -399,10 +424,14 @@ class UsersController extends Controller
         }
 
         $allowed = false;
-        if ($authUser->role === 'super_admin') {
-            $allowed = in_array($user->role, ['user', 'admin'], true);
-        } elseif ($authUser->role === 'admin') {
-            $allowed = $user->role === 'user';
+        if (!$authUser->canManageUsers()) {
+            abort(403);
+        }
+
+        if ($authUser->isSuperAdmin()) {
+            $allowed = $user->hasAnyAppRole(['user', 'admin']);
+        } elseif ($authUser->hasAppRole('admin')) {
+            $allowed = $user->hasAppRole('user');
         }
         if (!$allowed) {
             abort(403);
@@ -458,6 +487,9 @@ class UsersController extends Controller
         }
 
         $authUser = $request->user();
+        if (!$authUser || !$authUser->canManageUserRoles()) {
+            abort(403);
+        }
         if ($authUser && $authUser->id === $user->id) {
             return back()->withErrors([
                 'role' => 'No puedes cambiar tu propio rol.',
@@ -465,8 +497,9 @@ class UsersController extends Controller
         }
 
         $user->forceFill([
-            'role' => $request->string('role')->toString(),
+            'legacy_role' => User::normalizeRoleName($request->string('role')->toString()),
         ])->save();
+        $user->syncAppRole($request->string('role')->toString());
 
         return back();
     }

@@ -109,9 +109,10 @@ class RegisteredUserController extends Controller
             'email_verified_at' => now(),
             'preferred_locale' => $preferredLocale,
         ]);
-        $user->role = 'user';
+        $user->legacy_role = User::normalizeRoleName('user');
         $user->is_active = true;
         $user->save();
+        $user->syncAppRole('user');
 
         $record->delete();
 

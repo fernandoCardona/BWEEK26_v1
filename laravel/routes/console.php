@@ -36,9 +36,9 @@ Artisan::command('users:reset-password {email} {password}', function (string $em
 
 Artisan::command('users:list {--limit=20}', function () {
     $limit = (int) $this->option('limit');
-    $users = User::query()->orderBy('created_at', 'desc')->limit($limit)->get(['id', 'email', 'role', 'is_active', 'created_at']);
+    $users = User::query()->orderBy('created_at', 'desc')->limit($limit)->get(['id', 'email', 'legacy_role', 'is_active', 'created_at']);
     foreach ($users as $u) {
-        $this->line("{$u->email} | {$u->role} | active=" . (($u->is_active ?? true) ? '1' : '0'));
+        $this->line("{$u->email} | {$u->roleName()} | active=" . (($u->is_active ?? true) ? '1' : '0'));
     }
     $this->info('Total: ' . User::query()->count());
 })->purpose('Listar usuarios (debug)');
@@ -65,9 +65,10 @@ Artisan::command('users:ensure {email} {password} {--role=user}', function (stri
             'email_verified_at' => now(),
         ]);
         $user->forceFill([
-            'role' => $role,
+            'legacy_role' => User::normalizeRoleName($role),
             'is_active' => true,
         ])->save();
+        $user->syncAppRole($role);
 
         $this->info("Usuario creado OK: {$normalizedEmail} ({$role})");
         return 0;
@@ -75,9 +76,10 @@ Artisan::command('users:ensure {email} {password} {--role=user}', function (stri
 
     $user->forceFill([
         'password' => $password,
-        'role' => $role,
+        'legacy_role' => User::normalizeRoleName($role),
         'is_active' => true,
     ])->save();
+    $user->syncAppRole($role);
 
     $ok = Hash::check($password, (string) $user->password);
     if (!$ok) {

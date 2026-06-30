@@ -10,8 +10,7 @@ class TransactionsController extends Controller
 {
     public function destroy(Request $request, Transaction $transaction)
     {
-        $role = (string) ($request->user()?->role ?? '');
-        if (!in_array($role, ['admin', 'super_admin', 'super_user'], true)) {
+        if (!($request->user()?->canManageTransactions() ?? false)) {
             abort(403);
         }
 
@@ -29,4 +28,3 @@ class TransactionsController extends Controller
         return back();
     }
 }
-

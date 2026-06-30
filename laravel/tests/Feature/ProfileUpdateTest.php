@@ -3,12 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Tests\TestCase;
 
 class ProfileUpdateTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseMigrations;
 
     public function test_user_can_update_own_profile(): void
     {
@@ -18,7 +18,8 @@ class ProfileUpdateTest extends TestCase
             'email' => 'test@example.com',
             'password' => 'password1234',
         ]);
-        $user->forceFill(['role' => 'user', 'is_active' => true])->save();
+        $user->forceFill(['legacy_role' => 'user', 'is_active' => true])->save();
+        $user->syncAppRole('user');
 
         $response = $this->withSession(['_token' => 'test-token'])->actingAs($user)->patch('/profile', [
             '_token' => 'test-token',
@@ -45,23 +46,25 @@ class ProfileUpdateTest extends TestCase
         $admin = new User();
         $admin->fill([
             'name' => 'Admin',
-            'email' => 'admin@example.com',
+            'email' => 'admin.profile@example.com',
             'password' => 'password1234',
         ]);
-        $admin->forceFill(['role' => 'admin', 'is_active' => true])->save();
+        $admin->forceFill(['legacy_role' => 'admin', 'is_active' => true])->save();
+        $admin->syncAppRole('admin');
 
         $user = new User();
         $user->fill([
             'name' => 'User',
-            'email' => 'user@example.com',
+            'email' => 'user.profile@example.com',
             'password' => 'password1234',
         ]);
-        $user->forceFill(['role' => 'user', 'is_active' => true])->save();
+        $user->forceFill(['legacy_role' => 'user', 'is_active' => true])->save();
+        $user->syncAppRole('user');
 
         $response = $this->withSession(['_token' => 'test-token'])->actingAs($admin)->patch(route('admin.users.update', $user->id), [
             '_token' => 'test-token',
             'name' => 'User Updated',
-            'email' => 'user@example.com',
+            'email' => 'user.profile@example.com',
             'country' => 'FR',
         ]);
 

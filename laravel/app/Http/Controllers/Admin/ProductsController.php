@@ -51,7 +51,7 @@ class ProductsController extends Controller
         return Inertia::render('Admin/Products/Index', [
             'products' => $products,
             'can' => [
-                'create' => in_array($request->user()?->role, ['super_admin', 'admin'], true),
+                'create' => (bool) $request->user()?->canManageProducts(),
             ],
         ]);
     }
@@ -64,8 +64,8 @@ class ProductsController extends Controller
             'categories' => $categories,
             'can' => [
                 'delete' => false,
-                'manage_stock' => in_array($request->user()?->role, ['super_admin', 'admin'], true),
-                'toggle_active' => in_array($request->user()?->role, ['super_admin', 'admin'], true),
+                'manage_stock' => (bool) $request->user()?->canManageProducts(),
+                'toggle_active' => (bool) $request->user()?->canManageProducts(),
             ],
         ]);
     }
@@ -73,7 +73,7 @@ class ProductsController extends Controller
     public function edit(Request $request, Product $product)
     {
         $locale = app()->getLocale();
-        $role = $request->user()?->role;
+        $user = $request->user();
         $categories = ProductCategory::query()->where('is_active', true)->orderBy('name')->get();
 
         return Inertia::render('Admin/Products/Edit', [
@@ -104,9 +104,9 @@ class ProductsController extends Controller
             ],
             'categories' => $categories,
             'can' => [
-                'delete' => $role === 'super_admin',
-                'manage_stock' => in_array($role, ['super_admin', 'admin'], true),
-                'toggle_active' => in_array($role, ['super_admin', 'admin'], true),
+                'delete' => (bool) $user?->isSuperAdmin(),
+                'manage_stock' => (bool) $user?->canManageProducts(),
+                'toggle_active' => (bool) $user?->canManageProducts(),
             ],
         ]);
     }
@@ -169,13 +169,13 @@ class ProductsController extends Controller
 
     public function update(Request $request, Product $product)
     {
-        $role = $request->user()?->role;
-        $data = $this->validateProduct($request, !in_array($role, ['super_admin', 'admin'], true));
+        $user = $request->user();
+        $data = $this->validateProduct($request, !($user?->canManageProducts() ?? false));
 
         $product->fill($data);
         $product->save();
 
-        if (in_array($role, ['super_admin', 'admin'], true)) {
+        if ($user?->canManageProducts()) {
             $this->handleImage($request, $product);
         }
 

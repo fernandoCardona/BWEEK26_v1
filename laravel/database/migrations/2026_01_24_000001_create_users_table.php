@@ -19,7 +19,7 @@ return new class extends Migration {
             $table->string('telegram_username')->nullable();
             $table->string('password');
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('role')->default('user');
+            $table->string('legacy_role')->default('user');
             $table->string('preferred_locale')->default('es');
             $table->string('registration_source')->nullable();
             $table->json('interests')->nullable();
