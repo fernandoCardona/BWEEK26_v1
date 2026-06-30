@@ -2,6 +2,10 @@
 
 Este archivo documenta las credenciales de desarrollo que usa el proyecto para iniciar sesion en las areas privadas cuando se arranca desde cero con `.env.example`.
 
+Estado actual:
+- Verificado contra la base de datos activa del proyecto.
+- Reseteado y confirmado para poder entrar hoy en el area privada.
+
 Importante:
 - Las credenciales reales activas las define tu archivo `.env`.
 - Si cambias `BSW_FIXED_*` en `.env`, este documento deja de reflejar los valores reales.
@@ -32,8 +36,18 @@ Usuarios fijos de desarrollo:
 - Password: `changeme_fixed_users_password`
 - Variable `.env`: `BSW_FIXED_USER_EMAIL`
 
+Estas tres cuentas existen actualmente en la tabla `users` y estan activas.
+
 Variable de password comun:
 - `BSW_FIXED_USERS_PASSWORD=changeme_fixed_users_password`
+
+Credencial recomendada para entrar al panel admin:
+- Email: `superadmin@example.com`
+- Password: `changeme_fixed_users_password`
+
+Credencial alternativa:
+- Email: `admin@example.com`
+- Password: `changeme_fixed_users_password`
 
 ## n8n
 
